@@ -8,7 +8,6 @@ This document evaluates **React Native** and **Flutter** to determine the most e
 | Criteria | React Native (Meta) | Flutter (Google) |
 | :--- | :--- | :--- |
 | **Language** | JavaScript / TypeScript | Dart |
-
 | **Ecosystem** | Massive (Web + Mobile overlap) | Robust & Growing (Mobile-focused) |
 | **Library Availability** | High (npm) | Medium-High (pub.dev) |
 | **Learning Curve** | Moderate (Easier for JS users) | Steep (Requires learning Dart) |

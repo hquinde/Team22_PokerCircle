@@ -13,14 +13,6 @@ This document evaluates:
 
 ---
 
-## Assumptions (Sprint 1)
-- PokerCircle is a mobile-first app (React Native) that will call a backend API.
-- The backend will manage game session state and write persistent data to a database.
-- Real-time updates are valuable (not necessarily hardcore “game physics,” but frequent UI updates).
-- Team values developer velocity and reducing integration risk.
-
----
-
 ## Option A: Node.js (JavaScript/TypeScript)
 ### Strengths
 - **Concurrency model fits real-time well:** Node’s event loop is designed for I/O-heavy workloads (many clients sending small messages).
@@ -46,7 +38,7 @@ This document evaluates:
 
 ---
 
-## Performance Discussion (High-Level)
+## Performance Discussion
 ### Concurrency Handling
 - **Node.js:** Single-threaded event loop handles many concurrent I/O operations efficiently. Great for chat-like or “room update” style workloads.
 - **FastAPI (ASGI):** Async can also handle concurrent I/O well, but performance and correctness depend on:

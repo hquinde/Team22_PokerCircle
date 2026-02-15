@@ -34,3 +34,7 @@ yarn-error.*
 
 # TypeScript
 *.tsbuildinfo
+
+# Claude Code
+.claude/
+CLAUDE.md

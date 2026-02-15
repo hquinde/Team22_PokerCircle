@@ -1,55 +1,24 @@
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, Pressable, Alert } from 'react-native';
+import HomeScreen from './src/screens/HomeScreen';
+import JoinSessionScreen from './src/screens/JoinSessionScreen';
+
+export type RootStackParamList = {
+  Home: undefined;
+  JoinSession: undefined;
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
-  const handleButtonPress = () => {
-    Alert.alert('Button Pressed', 'Welcome to PokerCircle!');
-  };
-
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>PokerCircle</Text>
-
-      <Pressable
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed
-        ]}
-        onPress={handleButtonPress}
-      >
-        <Text style={styles.buttonText}>Get Started</Text>
-      </Pressable>
-
+    <NavigationContainer>
       <StatusBar style="auto" />
-    </View>
+      <Stack.Navigator initialRouteName="Home">
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="JoinSession" component={JoinSessionScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 40,
-    color: '#1a1a1a',
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 8,
-  },
-  buttonPressed: {
-    opacity: 0.7,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-});

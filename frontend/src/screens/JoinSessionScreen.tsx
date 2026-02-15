@@ -1,9 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { colors } from '../theme/colors';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'JoinSession'>;
+type Props = StackScreenProps<RootStackParamList, 'JoinSession'>;
 
 export default function JoinSessionScreen(_props: Props) {
   return (

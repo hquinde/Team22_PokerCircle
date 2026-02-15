@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { colors } from '../theme/colors';
@@ -6,10 +7,42 @@ import { colors } from '../theme/colors';
 type Props = StackScreenProps<RootStackParamList, 'JoinSession'>;
 
 export default function JoinSessionScreen(_props: Props) {
+  const [sessionCode, setSessionCode] = useState('');
+
+  const isValid = sessionCode.length === 6;
+
+  function handleChangeText(text: string) {
+    setSessionCode(text.replace(/\s/g, '').toUpperCase());
+  }
+
+  function handleJoin() {
+    console.log('Session code:', sessionCode);
+  }
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Join Session</Text>
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        <Text style={styles.title}>Join Session</Text>
+        <Text style={styles.label}>Enter 6-character session code</Text>
+        <TextInput
+          style={styles.input}
+          value={sessionCode}
+          onChangeText={handleChangeText}
+          maxLength={6}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          placeholder="XXXXXX"
+          placeholderTextColor={colors.inputBorder}
+        />
+        <Pressable
+          style={[styles.button, !isValid && styles.buttonDisabled]}
+          onPress={handleJoin}
+          disabled={!isValid}
+        >
+          <Text style={styles.buttonText}>Join Game</Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -17,12 +50,51 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  content: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 32,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
     color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  label: {
+    fontSize: 16,
+    color: colors.textPrimary,
+    marginBottom: 16,
+  },
+  input: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    fontSize: 24,
+    fontWeight: 'bold',
+    letterSpacing: 8,
+    textAlign: 'center',
+    color: colors.textPrimary,
+    marginBottom: 24,
+  },
+  button: {
+    width: '100%',
+    backgroundColor: colors.accent,
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  buttonDisabled: {
+    backgroundColor: colors.disabled,
+  },
+  buttonText: {
+    color: colors.textOnPrimary,
+    fontSize: 18,
+    fontWeight: '600',
   },
 });

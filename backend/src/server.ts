@@ -1,23 +1,42 @@
 import express from "express";
-import type { Request, Response } from "express";
-
+import http from "http";
+import { Server } from "socket.io";
 
 const app = express();
+
 app.use(express.json());
 
-app.get("/ping", (req: Request, res: Response) => {
-  res.status(200).send("PokerCircle backend running");
+// existing REST route(s)
+app.get("/ping", (req, res) => {
+  res.json({ message: "pong" });
 });
-app.get("/api/health", (req: Request, res: Response) => {
-  res.status(200).json({
-    status: "ok",
-    service: "PokerCircle API",
-    timestamp: new Date().toISOString()
+
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
+// Wrap Express in an HTTP server
+const httpServer = http.createServer(app);
+
+// Attach Socket.IO
+const io = new Server(httpServer, {
+  // dev-friendly: allow connections during local testing
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
+
+io.on("connection", (socket) => {
+  console.log(`User connected: ${socket.id}`);
+
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${socket.id}`);
   });
 });
 
-
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+httpServer.listen(PORT, "0.0.0.0", () => {
   console.log(`Server listening on port ${PORT}`);
 });

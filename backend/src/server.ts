@@ -5,6 +5,8 @@ import { Server } from "socket.io";
 const app = express();
 
 app.use(express.json());
+import sessionsRouter from "./routes/sessions";
+app.use("/api/sessions", sessionsRouter);
 
 // existing REST route(s)
 app.get("/ping", (req, res) => {

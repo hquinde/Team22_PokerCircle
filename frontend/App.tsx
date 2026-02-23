@@ -4,8 +4,14 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import HomeScreen from './src/screens/HomeScreen';
 import JoinSessionScreen from './src/screens/JoinSessionScreen';
+import LoginScreen from './src/screens/LoginScreen';
+import SignupScreen from './src/screens/SignupScreen';
+import WelcomeScreen from './src/screens/WelcomeScreen';
 
 export type RootStackParamList = {
+  Welcome: undefined;
+  Login: undefined;
+  Signup: undefined;
   Home: undefined;
   JoinSession: undefined;
 };
@@ -16,7 +22,10 @@ export default function App() {
   return (
     <NavigationContainer>
       <StatusBar style="auto" />
-      <Stack.Navigator initialRouteName="Home">
+      <Stack.Navigator initialRouteName="Welcome">
+        <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="JoinSession" component={JoinSessionScreen} />
       </Stack.Navigator>

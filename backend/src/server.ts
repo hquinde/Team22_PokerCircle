@@ -1,12 +1,17 @@
 import express from "express";
 import http from "http";
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
+import dotenv from "dotenv";
+import sessionsRouter from "./routes/sessions";
+import authRouter from "./routes/auth";
+
+dotenv.config();
 
 const app = express();
 
 app.use(express.json());
-import sessionsRouter from "./routes/sessions";
 app.use("/api/sessions", sessionsRouter);
+app.use("/api/auth", authRouter);
 
 // existing REST route(s)
 app.get("/ping", (req, res) => {
@@ -31,7 +36,7 @@ const io = new Server(httpServer, {
   },
 });
 
-io.on("connection", (socket) => {
+io.on("connection", (socket: Socket) => {
   console.log(`User connected: ${socket.id}`);
 
   socket.on("disconnect", () => {

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
-import { colors } from '../theme/colors';
 
 type Props = StackScreenProps<RootStackParamList, 'JoinSession'>;
 
@@ -24,6 +23,7 @@ export default function JoinSessionScreen(_props: Props) {
       <View style={styles.content}>
         <Text style={styles.title}>Join Session</Text>
         <Text style={styles.label}>Enter 6-character session code</Text>
+
         <TextInput
           style={styles.input}
           value={sessionCode}
@@ -32,8 +32,9 @@ export default function JoinSessionScreen(_props: Props) {
           autoCapitalize="characters"
           autoCorrect={false}
           placeholder="XXXXXX"
-          placeholderTextColor={colors.inputBorder}
+          placeholderTextColor="#888"
         />
+
         <Pressable
           style={[styles.button, !isValid && styles.buttonDisabled]}
           onPress={handleJoin}
@@ -49,7 +50,7 @@ export default function JoinSessionScreen(_props: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#0D0D0D', // black
   },
   content: {
     flex: 1,
@@ -60,18 +61,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: colors.textPrimary,
+    color: '#B22222', // red title
     marginBottom: 8,
   },
   label: {
     fontSize: 16,
-    color: colors.textPrimary,
+    color: '#FFFFFF',
     marginBottom: 16,
   },
   input: {
     width: '100%',
     borderWidth: 1,
-    borderColor: colors.inputBorder,
+    borderColor: '#B22222', // red border
+    backgroundColor: '#1A1A1A', // dark gray input
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -79,21 +81,21 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 8,
     textAlign: 'center',
-    color: colors.textPrimary,
+    color: '#FFFFFF',
     marginBottom: 24,
   },
   button: {
     width: '100%',
-    backgroundColor: colors.accent,
+    backgroundColor: '#B22222', // red button
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
   },
   buttonDisabled: {
-    backgroundColor: colors.disabled,
+    backgroundColor: '#444', // dark gray disabled
   },
   buttonText: {
-    color: colors.textOnPrimary,
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
   },

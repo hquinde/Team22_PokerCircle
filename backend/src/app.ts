@@ -1,6 +1,8 @@
 import express from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import cors from "cors";
+import morgan from "morgan";
 
 import pool from "./db/pool";
 import sessionsRouter from "./routes/sessions";
@@ -12,6 +14,24 @@ const app = express();
 const PgStore = connectPgSimple(session);
 
 app.use(express.json());
+// DEV CORS: allow requests from Expo / devices during local testing
+if (process.env.NODE_ENV !== "production") {
+  app.use(
+    cors({
+      origin: "*",
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    })
+  );
+} else {
+  // production: lock down later (e.g., real frontend origin)
+  app.use(cors({ origin: false }));
+}
+// Request logging (no headers/secrets by default)
+app.use(
+  morgan(":method :url :status :response-time ms", {
+    skip: () => process.env.NODE_ENV === "test",
+  })
+);
 
 const sessionConfig: session.SessionOptions = {
   secret: process.env["SESSION_SECRET"] ?? "dev-secret-change-me",

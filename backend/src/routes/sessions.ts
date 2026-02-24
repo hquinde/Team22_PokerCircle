@@ -5,6 +5,10 @@ import { Session } from "../types/session";
 
 const router = Router();
 
+router.get("/", (req, res) => {
+  res.json({ status: "ok", message: "sessions route reachable" });
+});
+
 router.post("/", (req: Request, res: Response) => {
   // Generate a unique 6-char code (collision handling)
   let sessionCode = generateSessionCode(6);
@@ -29,5 +33,6 @@ router.post("/", (req: Request, res: Response) => {
 
   return res.status(201).json(session);
 });
+
 
 export default router;

@@ -1,26 +1,9 @@
-import express from "express";
 import http from "http";
 import { Server, Socket } from "socket.io";
 import dotenv from "dotenv";
-import sessionsRouter from "./routes/sessions";
-import authRouter from "./routes/auth";
+import app from "./app";
 
 dotenv.config();
-
-const app = express();
-
-app.use(express.json());
-app.use("/api/sessions", sessionsRouter);
-app.use("/api/auth", authRouter);
-
-// existing REST route(s)
-app.get("/ping", (req, res) => {
-  res.json({ message: "pong" });
-});
-
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
@@ -29,11 +12,10 @@ const httpServer = http.createServer(app);
 
 // Attach Socket.IO
 const io = new Server(httpServer, {
-  // dev-friendly: allow connections during local testing
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
+  cors:
+    process.env.NODE_ENV !== "production"
+      ? { origin: "*", methods: ["GET", "POST"] }
+      : { origin: false },
 });
 
 io.on("connection", (socket: Socket) => {

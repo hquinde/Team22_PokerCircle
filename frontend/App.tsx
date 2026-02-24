@@ -7,6 +7,7 @@ import JoinSessionScreen from './src/screens/JoinSessionScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import WelcomeScreen from './src/screens/WelcomeScreen';
+import FindFriendsScreen from './src/screens/FindFriendsScreen';
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -14,6 +15,7 @@ export type RootStackParamList = {
   Signup: undefined;
   Home: undefined;
   JoinSession: undefined;
+  FindFriends: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -28,6 +30,7 @@ export default function App() {
         <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="JoinSession" component={JoinSessionScreen} />
+        <Stack.Screen name="FindFriends" component={FindFriendsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

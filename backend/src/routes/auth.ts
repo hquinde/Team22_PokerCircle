@@ -1,68 +1,130 @@
-import { Router, Request, Response } from "express";
+import { Router } from "express";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import pool from "../utils/db";
+import crypto from "crypto";
+import asyncHandler from "../middleware/asyncHandler";
+import UserModel from "../models/User";
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
 
-// Signup Route
-router.post("/signup", async (req: Request, res: Response) => {
-  const { username, email, password } = req.body;
+// POST /api/auth/signup
+router.post(
+  "/signup",
+  asyncHandler(async (req, res) => {
+    const { username, email, password } = req.body;
 
-  if (!username || !email || !password) {
-    return res.status(400).json({ error: "Username, email, and password are required" });
-  }
-
-  try {
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const result = await pool.query(
-      "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING user_id, username, email",
-      [username, email, passwordHash]
-    );
-
-    const user = result.rows[0];
-    const token = jwt.sign({ userId: user.user_id }, JWT_SECRET, { expiresIn: "24h" });
-
-    res.status(201).json({ user, token });
-  } catch (err: any) {
-    if (err.code === "23505") { // Unique constraint violation
-      return res.status(400).json({ error: "Username or email already exists" });
+    if (!username || !email || !password) {
+      res.status(400).json({ error: "Username, email, and password are required" });
+      return;
     }
-    console.error("Signup error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
 
-// Login Route
-router.post("/login", async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+    const existingUser = await UserModel.findByEmail(email);
+    if (existingUser) {
+      res.status(400).json({ error: "Username or email already exists" });
+      return;
+    }
 
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required" });
-  }
+    const passwordHash = await bcrypt.hash(password, 10);
+    const userID = crypto.randomUUID();
 
-  try {
-    const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
-    const user = result.rows[0];
+    const newUser = new UserModel({
+      userID,
+      username,
+      email,
+      password: passwordHash,
+    });
+
+    await newUser.save();
+
+    // Log user in automatically after signup
+    await new Promise<void>((resolve, reject) => {
+      req.session.regenerate((err) => (err ? reject(err) : resolve()));
+    });
+
+    req.session.userId = newUser.userID;
+
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err) => (err ? reject(err) : resolve()));
+    });
+
+    res.status(201).json({
+      userID: newUser.userID,
+      username: newUser.username,
+      email: newUser.email,
+    });
+  })
+);
+
+// POST /api/auth/login
+router.post(
+  "/login",
+  asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+
+    if (typeof email !== "string" || typeof password !== "string") {
+      res.status(400).json({ message: "email and password are required" });
+      return;
+    }
+
+    const user = await UserModel.findByEmail(email);
+
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      res.status(401).json({ message: "Invalid email or password" });
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      req.session.regenerate((err) => (err ? reject(err) : resolve()));
+    });
+
+    req.session.userId = user.userID;
+
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err) => (err ? reject(err) : resolve()));
+    });
+
+    res.status(200).json({
+      userID: user.userID,
+      username: user.username,
+      email: user.email,
+    });
+  }),
+);
+
+// GET /api/auth/me
+router.get(
+  "/me",
+  asyncHandler(async (req, res) => {
+    if (!req.session.userId) {
+      res.status(401).json({ message: "Not authenticated" });
+      return;
+    }
+
+    const user = await UserModel.findById(req.session.userId);
 
     if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      res.status(401).json({ message: "User not found" });
+      return;
     }
 
-    const isValid = await bcrypt.compare(password, user.password_hash);
-    if (!isValid) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
+    res.status(200).json({
+      userID: user.userID,
+      username: user.username,
+      email: user.email,
+    });
+  }),
+);
 
-    const token = jwt.sign({ userId: user.user_id }, JWT_SECRET, { expiresIn: "24h" });
+// POST /api/auth/logout
+router.post(
+  "/logout",
+  asyncHandler(async (req, res) => {
+    await new Promise<void>((resolve, reject) => {
+      req.session.destroy((err) => (err ? reject(err) : resolve()));
+    });
 
-    res.status(200).json({ user: { user_id: user.user_id, username: user.username, email: user.email }, token });
-  } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+    res.clearCookie("connect.sid");
+    res.status(200).json({ message: "Logged out" });
+  }),
+);
 
 export default router;

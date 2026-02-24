@@ -1,0 +1,23 @@
+﻿=== 404 Test: GET /api/does-not-exist ===
+HTTP/1.1 404 Not Found
+X-Powered-By: Express
+Content-Type: application/json; charset=utf-8
+Content-Length: 21
+ETag: W/"15-5KajTCx0AJD0xogoSeOjjV2M8K0"
+Date: Mon, 23 Feb 2026 16:22:59 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"error":"Not Found"}
+
+=== 500 Test: GET /api/debug/error ===
+HTTP/1.1 500 Internal Server Error
+X-Powered-By: Express
+Content-Type: application/json; charset=utf-8
+Content-Length: 30
+ETag: W/"1e-u4k3zFNO4XEp8Mt8kl0M1/hvlS8"
+Date: Mon, 23 Feb 2026 16:23:02 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"error":"Debug forced error"}

@@ -1,0 +1,5 @@
+Sample request logs (dev)
+
+GET /api/health 200 2.915 ms
+GET /api/sessions 200 0.803 ms
+GET /ping 200 0.513 ms

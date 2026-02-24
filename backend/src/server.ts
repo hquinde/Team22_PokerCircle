@@ -1,7 +1,9 @@
 import http from "http";
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
+import dotenv from "dotenv";
 import app from "./app";
 
+dotenv.config();
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
@@ -16,7 +18,7 @@ const io = new Server(httpServer, {
       : { origin: false },
 });
 
-io.on("connection", (socket) => {
+io.on("connection", (socket: Socket) => {
   console.log(`User connected: ${socket.id}`);
 
   socket.on("disconnect", () => {

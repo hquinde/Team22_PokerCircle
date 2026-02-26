@@ -1,8 +1,11 @@
 export const colors = {
-  background: '#fff',
-  textPrimary: '#1a1a1a',
-  textOnPrimary: '#fff',
-  accent: '#007AFF',
-  inputBorder: '#cccccc',
-  disabled: '#a0c4f1',
+  background: '#0D0D0D',
+  primary: '#B22222',
+  primaryDark: '#8B0000',
+  text: '#FFFFFF',
+  textOnPrimary: '#FFFFFF',
+  inputBackground: '#1A1A1A',
+  inputBorder: '#B22222',
+  disabled: '#444444',
+  placeholder: '#888888',
 } as const;

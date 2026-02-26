@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
+import { colors } from '../theme/colors';
 
 type Props = StackScreenProps<RootStackParamList, 'Home'>;
 
@@ -39,7 +40,7 @@ export default function HomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D0D0D',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
@@ -49,7 +50,7 @@ const styles = StyleSheet.create({
     fontSize: 42,
     letterSpacing: 3,
     marginBottom: 60,
-    color: '#8B0000',
+    color: colors.primaryDark,
     textTransform: 'uppercase',
   },
 
@@ -59,7 +60,7 @@ const styles = StyleSheet.create({
   },
 
   primaryButton: {
-    backgroundColor: '#B22222',
+    backgroundColor: colors.primary,
     paddingVertical: 18,
     borderRadius: 30,
     alignItems: 'center',
@@ -73,7 +74,7 @@ const styles = StyleSheet.create({
   },
 
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
     fontSize: 18,
     fontWeight: '600',
     letterSpacing: 1,
@@ -84,11 +85,11 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#B22222',
+    borderColor: colors.primary,
   },
 
   secondaryButtonText: {
-    color: '#FFFFFF',
+    color: colors.text,
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 1,

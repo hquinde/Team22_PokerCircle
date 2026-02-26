@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
+import { colors } from '../theme/colors';
 
 type Props = StackScreenProps<RootStackParamList, 'JoinSession'>;
 
@@ -32,7 +33,7 @@ export default function JoinSessionScreen(_props: Props) {
           autoCapitalize="characters"
           autoCorrect={false}
           placeholder="XXXXXX"
-          placeholderTextColor="#888"
+          placeholderTextColor={colors.placeholder}
         />
 
         <Pressable
@@ -50,7 +51,7 @@ export default function JoinSessionScreen(_props: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0D0D0D', // black
+    backgroundColor: colors.background, // black
   },
   content: {
     flex: 1,
@@ -61,19 +62,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#B22222', // red title
+    color: colors.primaryDark, // red title
     marginBottom: 8,
   },
   label: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: 16,
   },
   input: {
     width: '100%',
     borderWidth: 1,
-    borderColor: '#B22222', // red border
-    backgroundColor: '#1A1A1A', // dark gray input
+    borderColor: colors.inputBorder, // red border
+    backgroundColor: colors.inputBackground, // dark gray input
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -81,21 +82,21 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 8,
     textAlign: 'center',
-    color: '#FFFFFF',
+    color: colors.text,
     marginBottom: 24,
   },
   button: {
     width: '100%',
-    backgroundColor: '#B22222', // red button
+    backgroundColor: colors.primary, // red button
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
   },
   buttonDisabled: {
-    backgroundColor: '#444', // dark gray disabled
+    backgroundColor: colors.disabled, // dark gray disabled
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: colors.textOnPrimary,
     fontSize: 18,
     fontWeight: '600',
   },

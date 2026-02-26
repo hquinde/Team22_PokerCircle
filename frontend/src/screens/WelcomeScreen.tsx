@@ -53,11 +53,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 40,
     fontWeight: 'bold',
-    color: colors.textPrimary,
+    color: colors.primaryDark,
   },
   subtitle: {
     fontSize: 18,
-    color: '#666',
+    color: colors.placeholder,
     marginTop: 10,
     textAlign: 'center',
   },
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   loginButton: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
   },
   loginButtonText: {
     color: colors.textOnPrimary,
@@ -85,10 +85,10 @@ const styles = StyleSheet.create({
   signupButton: {
     backgroundColor: 'transparent',
     borderWidth: 2,
-    borderColor: colors.accent,
+    borderColor: colors.primary,
   },
   signupButtonText: {
-    color: colors.accent,
+    color: colors.primary,
     fontSize: 18,
     fontWeight: 'bold',
   },

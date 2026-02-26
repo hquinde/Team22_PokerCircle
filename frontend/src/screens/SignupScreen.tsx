@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, Pressable, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  Pressable,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+  StatusBar,
+} from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { colors } from '../theme/colors';
@@ -24,7 +34,6 @@ export default function SignupScreen({ navigation }: Props) {
       return;
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       Alert.alert('Error', 'Please enter a valid email address');
@@ -35,9 +44,7 @@ export default function SignupScreen({ navigation }: Props) {
     try {
       const response = await fetch('http://localhost:3000/api/auth/signup', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password }),
       });
 
@@ -59,12 +66,14 @@ export default function SignupScreen({ navigation }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+
       <Text style={styles.title}>Sign Up</Text>
-      
+
       <TextInput
         style={styles.input}
         placeholder="Username"
-        placeholderTextColor="#888"
+        placeholderTextColor={colors.placeholder}
         value={username}
         onChangeText={setUsername}
         autoCapitalize="none"
@@ -73,7 +82,7 @@ export default function SignupScreen({ navigation }: Props) {
       <TextInput
         style={styles.input}
         placeholder="Email"
-        placeholderTextColor="#888"
+        placeholderTextColor={colors.placeholder}
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -83,7 +92,7 @@ export default function SignupScreen({ navigation }: Props) {
       <TextInput
         style={styles.input}
         placeholder="Password"
-        placeholderTextColor="#888"
+        placeholderTextColor={colors.placeholder}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -92,14 +101,17 @@ export default function SignupScreen({ navigation }: Props) {
       <TextInput
         style={styles.input}
         placeholder="Confirm Password"
-        placeholderTextColor="#888"
+        placeholderTextColor={colors.placeholder}
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         secureTextEntry
       />
 
       <Pressable
-        style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+        style={({ pressed }) => [
+          styles.button,
+          pressed && styles.buttonPressed,
+        ]}
         onPress={handleSignup}
         disabled={loading}
       >
@@ -129,25 +141,26 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 40,
     textAlign: 'center',
-    color: colors.textPrimary,
+    color: colors.primaryDark, // red title
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.inputBackground, // dark gray input
+    color: colors.text,
     padding: 15,
     borderRadius: 8,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.inputBorder, // red border
   },
   button: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary, // red button
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 10,
   },
   buttonPressed: {
-    opacity: 0.7,
+    opacity: 0.85,
   },
   buttonText: {
     color: colors.textOnPrimary,
@@ -159,7 +172,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: colors.accent,
+    color: colors.primary, // red link
     fontSize: 16,
   },
 });

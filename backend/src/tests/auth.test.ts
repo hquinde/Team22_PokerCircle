@@ -1,9 +1,14 @@
 import request from 'supertest';
 import app from '../app';
 import UserModel from '../models/User';
+import bcrypt from 'bcryptjs';
 
 // Mock UserModel and pg
 jest.mock('../models/User');
+jest.mock('bcryptjs', () => ({
+  compare: jest.fn().mockResolvedValue(true),
+  hash: jest.fn().mockResolvedValue('hashedpassword'),
+}));
 jest.mock('pg', () => {
   const mPool = {
     query: jest.fn(),
@@ -48,6 +53,7 @@ describe('Auth Routes', () => {
 
     it('should return 401 for invalid password', async () => {
       (UserModel.findByEmail as jest.Mock).mockResolvedValue(mockUser);
+      (bcrypt.compare as jest.Mock).mockResolvedValueOnce(false);
 
       const response = await request(app)
         .post('/api/auth/login')

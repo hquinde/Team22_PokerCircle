@@ -36,7 +36,7 @@ router.post("/", (req: Request, res: Response) => {
 });
 
 router.get('/:sessionCode', asyncHandler(async (req: Request, res: Response) => {
-  const { sessionCode } = req.params;
+  const sessionCode = req.params['sessionCode'] as string;
   const session = getSession(sessionCode);
   if (!session) {
     return res.status(404).json({ error: 'Session not found' });

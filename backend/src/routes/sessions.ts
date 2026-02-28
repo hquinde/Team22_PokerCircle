@@ -1,7 +1,8 @@
 import { Router, Request, Response } from "express";
-import { createSession, hasSession } from "../store/sessionStore";
+import { createSession, hasSession, getSession } from "../store/sessionStore";
 import { generateSessionCode } from "../utils/sessionCode";
 import { Session } from "../types/session";
+import asyncHandler from "../middleware/asyncHandler";
 
 const router = Router();
 
@@ -34,5 +35,13 @@ router.post("/", (req: Request, res: Response) => {
   return res.status(201).json(session);
 });
 
+router.get('/:sessionCode', asyncHandler(async (req: Request, res: Response) => {
+  const sessionCode = req.params['sessionCode'] as string;
+  const session = getSession(sessionCode);
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+  return res.json(session);
+}));
 
 export default router;

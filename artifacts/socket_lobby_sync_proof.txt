@@ -1,0 +1,16 @@
+Socket.IO Lobby Sync — Proof of Working
+
+Instructions:
+1. Start backend:   cd backend && npm run dev
+2. Start frontend:  cd frontend && npm start
+3. Log in on two simulator instances (or two devices on the same local network).
+4. Both navigate to JoinSession and enter the same 6-char session code.
+5. Confirm both land on LobbyScreen and see each other's names appear live.
+6. Copy the server stdout below (showing both joins and both lobby:update emits).
+7. Navigate away from LobbyScreen on one device — confirm clean disconnect in logs.
+
+------------------------------------------------------------
+SERVER STDOUT (paste here after running the steps above):
+------------------------------------------------------------
+
+

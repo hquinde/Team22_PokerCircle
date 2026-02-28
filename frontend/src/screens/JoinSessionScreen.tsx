@@ -6,7 +6,7 @@ import { colors } from '../theme/colors';
 
 type Props = StackScreenProps<RootStackParamList, 'JoinSession'>;
 
-export default function JoinSessionScreen(_props: Props) {
+export default function JoinSessionScreen({ navigation }: Props) {
   const [sessionCode, setSessionCode] = useState('');
 
   const isValid = sessionCode.length === 6;
@@ -16,7 +16,7 @@ export default function JoinSessionScreen(_props: Props) {
   }
 
   function handleJoin() {
-    console.log('Session code:', sessionCode);
+    navigation.navigate('Lobby', { sessionCode });
   }
 
   return (
@@ -51,7 +51,7 @@ export default function JoinSessionScreen(_props: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background, // black
+    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: colors.primaryDark, // red title
+    color: colors.primaryDark,
     marginBottom: 8,
   },
   label: {
@@ -73,8 +73,8 @@ const styles = StyleSheet.create({
   input: {
     width: '100%',
     borderWidth: 1,
-    borderColor: colors.inputBorder, // red border
-    backgroundColor: colors.inputBackground, // dark gray input
+    borderColor: colors.inputBorder,
+    backgroundColor: colors.inputBackground,
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -87,13 +87,13 @@ const styles = StyleSheet.create({
   },
   button: {
     width: '100%',
-    backgroundColor: colors.primary, // red button
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
   },
   buttonDisabled: {
-    backgroundColor: colors.disabled, // dark gray disabled
+    backgroundColor: colors.disabled,
   },
   buttonText: {
     color: colors.textOnPrimary,

@@ -91,7 +91,7 @@ describe('Auth Routes', () => {
       expect(response.body.message).toBe('Logged out');
       
       // Check if cookie is cleared (set to empty/expired)
-      const setCookie = response.headers['set-cookie'][0];
+      const setCookie = response.headers['set-cookie']?.[0] ?? '';
       expect(setCookie).toMatch(/connect.sid=;/);
     });
   });

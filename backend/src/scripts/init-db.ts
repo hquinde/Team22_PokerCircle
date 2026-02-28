@@ -1,4 +1,4 @@
-import pool from "../utils/db";
+import pool from "../db/pool";
 
 const initDb = async () => {
   const client = await pool.connect();

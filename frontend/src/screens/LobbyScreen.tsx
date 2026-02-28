@@ -14,7 +14,7 @@ type LobbyUpdatePayload = {
 };
 
 export default function LobbyScreen({ route, navigation }: Props) {
-  const { sessionCode } = route.params;
+  const { sessionCode, devPlayerName } = route.params;
   const [players, setPlayers] = useState<Player[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,15 +23,22 @@ export default function LobbyScreen({ route, navigation }: Props) {
 
     async function init() {
       try {
-        const res = await fetch('http://localhost:3000/api/auth/me', {
-          credentials: 'include',
-        });
-        if (!res.ok) {
-          if (active) setError('Not authenticated. Please log in again.');
-          return;
+        let playerName: string;
+
+        if (devPlayerName !== undefined) {
+          playerName = devPlayerName;
+        } else {
+          const res = await fetch('http://localhost:3000/api/auth/me', {
+            credentials: 'include',
+          });
+          if (!res.ok) {
+            if (active) setError('Not authenticated. Please log in again.');
+            return;
+          }
+          const data = (await res.json()) as { username: string };
+          if (!active) return;
+          playerName = data.username;
         }
-        const data = (await res.json()) as { username: string };
-        if (!active) return;
 
         socket.connect();
 
@@ -43,7 +50,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
           if (active) setError(payload.message);
         });
 
-        socket.emit('session:joinRoom', { sessionCode, playerName: data.username });
+        socket.emit('session:joinRoom', { sessionCode, playerName });
       } catch {
         if (active) setError('Could not connect to server.');
       }
@@ -57,7 +64,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
       socket.off('error');
       socket.disconnect();
     };
-  }, [sessionCode]);
+  }, [sessionCode, devPlayerName]);
 
   if (error) {
     return (

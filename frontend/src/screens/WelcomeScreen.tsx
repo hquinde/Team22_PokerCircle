@@ -29,6 +29,15 @@ export default function WelcomeScreen({ navigation }: Props) {
         >
           <Text style={styles.signupButtonText}>Sign Up</Text>
         </Pressable>
+
+        {__DEV__ && (
+          <Pressable
+            style={({ pressed }) => [styles.button, styles.devButton, pressed && styles.buttonPressed]}
+            onPress={() => navigation.navigate('JoinSession', { devMode: true })}
+          >
+            <Text style={styles.devButtonText}>Dev Mode</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -91,5 +100,13 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  devButton: {
+    backgroundColor: colors.disabled,
+  },
+  devButtonText: {
+    color: colors.placeholder,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

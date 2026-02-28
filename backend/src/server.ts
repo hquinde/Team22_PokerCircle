@@ -2,7 +2,7 @@ import http from "http";
 import { Server, Socket } from "socket.io";
 import dotenv from "dotenv";
 import app from "./app";
-import { addPlayer, getSession, removePlayer } from "./store/sessionStore";
+import { addPlayer, createSession, getSession, removePlayer } from "./store/sessionStore";
 import type { JoinRoomPayload, LobbyUpdatePayload } from "./types/socketEvents";
 
 dotenv.config();
@@ -24,10 +24,10 @@ io.on("connection", (socket: Socket) => {
   console.log(`User connected: ${socket.id}`);
 
   socket.on("session:joinRoom", ({ sessionCode, playerName }: JoinRoomPayload) => {
-    const session = getSession(sessionCode);
+    let session = getSession(sessionCode);
     if (!session) {
-      socket.emit("error", { message: `Session ${sessionCode} not found` });
-      return;
+      createSession({ sessionCode, players: [], createdAt: new Date().toISOString() });
+      session = getSession(sessionCode)!;
     }
 
     const player = { playerId: socket.id, name: playerName };

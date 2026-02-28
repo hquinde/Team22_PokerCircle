@@ -15,8 +15,8 @@ export type RootStackParamList = {
   Login: undefined;
   Signup: undefined;
   Home: undefined;
-  JoinSession: undefined;
-  Lobby: { sessionCode: string };
+  JoinSession: { devMode?: boolean } | undefined;
+  Lobby: { sessionCode: string; devPlayerName?: string };
   FindFriends: undefined;
 };
 

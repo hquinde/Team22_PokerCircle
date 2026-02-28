@@ -6,7 +6,7 @@ import { colors } from '../theme/colors';
 
 type Props = StackScreenProps<RootStackParamList, 'JoinSession'>;
 
-export default function JoinSessionScreen(_props: Props) {
+export default function JoinSessionScreen({ navigation }: Props) {
   const [sessionCode, setSessionCode] = useState('');
 
   const isValid = sessionCode.length === 6;
@@ -16,7 +16,7 @@ export default function JoinSessionScreen(_props: Props) {
   }
 
   function handleJoin() {
-    console.log('Session code:', sessionCode);
+    navigation.navigate('Lobby', { sessionCode });
   }
 
   return (

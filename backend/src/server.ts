@@ -2,6 +2,8 @@ import http from "http";
 import { Server, Socket } from "socket.io";
 import dotenv from "dotenv";
 import app from "./app";
+import { addPlayer, getSession, removePlayer } from "./store/sessionStore";
+import type { JoinRoomPayload, LobbyUpdatePayload } from "./types/socketEvents";
 
 dotenv.config();
 
@@ -21,8 +23,44 @@ const io = new Server(httpServer, {
 io.on("connection", (socket: Socket) => {
   console.log(`User connected: ${socket.id}`);
 
+  socket.on("session:joinRoom", ({ sessionCode, playerName }: JoinRoomPayload) => {
+    const session = getSession(sessionCode);
+    if (!session) {
+      socket.emit("error", { message: `Session ${sessionCode} not found` });
+      return;
+    }
+
+    const player = { playerId: socket.id, name: playerName };
+
+    if (!session.players.some((p) => p.playerId === socket.id)) {
+      addPlayer(sessionCode, player);
+    }
+
+    socket.join(sessionCode);
+
+    const updated = getSession(sessionCode);
+    const payload: LobbyUpdatePayload = {
+      sessionCode,
+      players: updated?.players ?? [],
+    };
+    io.to(sessionCode).emit("lobby:update", payload);
+
+    console.log(`Joined room ${sessionCode}: ${playerName} (${socket.id})`);
+  });
+
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);
+
+    for (const room of socket.rooms) {
+      if (room === socket.id) continue;
+      removePlayer(room, socket.id);
+      const session = getSession(room);
+      const payload: LobbyUpdatePayload = {
+        sessionCode: room,
+        players: session?.players ?? [],
+      };
+      io.to(room).emit("lobby:update", payload);
+    }
   });
 });
 

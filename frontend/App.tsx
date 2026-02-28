@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import HomeScreen from './src/screens/HomeScreen';
 import JoinSessionScreen from './src/screens/JoinSessionScreen';
+import LobbyScreen from './src/screens/LobbyScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import WelcomeScreen from './src/screens/WelcomeScreen';
@@ -16,6 +17,7 @@ export type RootStackParamList = {
   Signup: undefined;
   Home: undefined;
   JoinSession: undefined;
+  Lobby: { sessionCode: string };
   FindFriends: undefined;
   Lobby: { sessionCode: string };
 };
@@ -32,6 +34,7 @@ export default function App() {
         <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="JoinSession" component={JoinSessionScreen} />
+        <Stack.Screen name="Lobby" component={LobbyScreen} />
         <Stack.Screen name="FindFriends" component={FindFriendsScreen} />
         <Stack.Screen name="Lobby" component={LobbyScreen} />
       </Stack.Navigator>

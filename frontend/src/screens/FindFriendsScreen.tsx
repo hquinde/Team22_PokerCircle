@@ -9,54 +9,56 @@ import {
   TextInput,
   View,
   StatusBar,
+  Alert,
 } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { colors } from '../theme/colors';
+import { searchUsers, type UserSummary } from '../api/api';
 
 type Props = StackScreenProps<RootStackParamList, 'FindFriends'>;
-
-type User = {
-  id: number;
-  username: string;
-};
 
 export default function FindFriendsScreen(_props: Props) {
   const [query, setQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<User[]>([]);
-  const [sentRequests, setSentRequests] = useState<number[]>([]);
+  const [results, setResults] = useState<UserSummary[]>([]);
+  const [sentRequests, setSentRequests] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const trimmed = useMemo(() => query.trim(), [query]);
-  const canSearch = trimmed.length > 0;
+  const canSearch = trimmed.length >= 3;
 
   function handleChangeText(text: string) {
     setQuery(text.replace(/\s{2,}/g, ' '));
+    if (error) setError(null);
   }
 
   async function handleSearch() {
-    if (!canSearch) return;
+    if (!canSearch) {
+      setError('Search query must be at least 3 characters.');
+      return;
+    }
 
     setHasSearched(true);
     setLoading(true);
+    setError(null);
 
     try {
-      await new Promise((r) => setTimeout(r, 450));
-
-      setResults([
-        { id: 101, username: `${trimmed}_player1` },
-        { id: 102, username: `${trimmed}_player2` },
-        { id: 103, username: `${trimmed}_player3` },
-      ]);
+      const data = await searchUsers(trimmed);
+      setResults(data);
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+      setResults([]);
     } finally {
       setLoading(false);
     }
   }
 
-  function handleAddFriend(friendId: number) {
+  function handleAddFriend(friendId: string) {
     if (sentRequests.includes(friendId)) return;
     setSentRequests((prev) => [...prev, friendId]);
+    Alert.alert('Friend Request Sent', 'Your request has been sent successfully.');
   }
 
   return (
@@ -91,6 +93,8 @@ export default function FindFriendsScreen(_props: Props) {
           <Text style={styles.buttonText}>Search</Text>
         </Pressable>
 
+        {error && <Text style={styles.errorText}>{error}</Text>}
+
         {loading && (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={colors.primary} />
@@ -98,20 +102,20 @@ export default function FindFriendsScreen(_props: Props) {
           </View>
         )}
 
-        {!loading && hasSearched && results.length === 0 && (
+        {!loading && hasSearched && results.length === 0 && !error && (
           <Text style={styles.emptyText}>No users found.</Text>
         )}
 
         <FlatList
           data={results}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 20 }}
           renderItem={({ item }) => {
             const sent = sentRequests.includes(item.id);
 
             return (
               <View style={styles.resultRow}>
-                <Text style={styles.username}>{item.username}</Text>
+                <Text style={styles.username}>{item.displayName}</Text>
 
                 <Pressable
                   style={({ pressed }) => [
@@ -213,6 +217,12 @@ const styles = StyleSheet.create({
     color: colors.placeholder,
     fontSize: 14,
     paddingTop: 8,
+  },
+
+  errorText: {
+    color: '#ff4444',
+    fontSize: 14,
+    marginBottom: 10,
   },
 
   resultRow: {

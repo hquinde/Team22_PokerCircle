@@ -67,7 +67,7 @@ router.post(
 
     const user = await UserModel.findByEmail(email);
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user || !user.password || !(await bcrypt.compare(password, user.password))) {
       res.status(401).json({ message: "Invalid email or password" });
       return;
     }

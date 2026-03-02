@@ -1,0 +1,34 @@
+# Friend Search Proof of Concept
+
+## Successful Search (q=logan)
+Request: GET /api/users/search?q=logan
+Status: 200 OK
+Response:
+{
+  "results": [
+    {
+      "id": "user-123",
+      "displayName": "Logan"
+    },
+    {
+      "id": "user-456",
+      "displayName": "logan_poker"
+    }
+  ]
+}
+
+## Search with No Results (q=nonexistent)
+Request: GET /api/users/search?q=nonexistent
+Status: 200 OK
+Response:
+{
+  "results": []
+}
+
+## Too-short query (q=lo)
+Request: GET /api/users/search?q=lo
+Status: 400 Bad Request
+Response:
+{
+  "error": "Query too short"
+}

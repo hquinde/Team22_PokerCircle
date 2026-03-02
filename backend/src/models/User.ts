@@ -5,13 +5,13 @@ class UserModel {
   userID: string;
   username: string;
   email: string;
-  password: string;
+  password?: string;
 
-  constructor({ userID, username, email, password }: User) {
-    this.userID = userID;
-    this.username = username;
-    this.email = email;
-    this.password = password;
+  constructor(user: User) {
+    this.userID = user.userID;
+    this.username = user.username;
+    this.email = user.email;
+    this.password = user.password;
   }
 
   async save(): Promise<void> {
@@ -39,6 +39,14 @@ class UserModel {
     const row = result.rows[0];
     if (!row) return null;
     return new UserModel(row);
+  }
+
+  static async search(query: string): Promise<UserModel[]> {
+    const result = await pool.query<User>(
+      'SELECT "userID", username, email FROM users WHERE username ILIKE $1',
+      [`%${query}%`],
+    );
+    return result.rows.map((row) => new UserModel(row));
   }
 }
 

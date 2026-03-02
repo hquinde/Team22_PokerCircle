@@ -8,6 +8,7 @@ import pool from "./db/pool";
 import sessionsRouter from "./routes/sessions";
 import debugRouter from "./routes/debug";
 import authRouter from "./routes/auth";
+import usersRouter from "./routes/users";
 import { notFound, errorHandler } from "./middleware/errorMiddleware";
 
 const app = express();
@@ -54,6 +55,7 @@ app.use(session(sessionConfig));
 // routes
 app.use("/api/auth", authRouter);
 app.use("/api/sessions", sessionsRouter);
+app.use("/api/users", usersRouter);
 
 app.get("/ping", (req, res) => {
   res.json({ message: "pong" });

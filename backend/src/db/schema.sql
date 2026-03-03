@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   password   TEXT  NOT NULL
 );
 
+-- Express-session store table (connect-pg-simple)
 CREATE TABLE IF NOT EXISTS "session" (
   "sid"    varchar        NOT NULL COLLATE "default",
   "sess"   json           NOT NULL,
@@ -12,8 +13,35 @@ CREATE TABLE IF NOT EXISTS "session" (
 )
 WITH (OIDS=FALSE);
 
-ALTER TABLE "session"
-  ADD CONSTRAINT "session_pkey"
-  PRIMARY KEY ("sid") DEFERRABLE INITIALLY IMMEDIATE;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'session_pkey'
+      AND conrelid = 'session'::regclass
+  ) THEN
+    ALTER TABLE "session"
+      ADD CONSTRAINT "session_pkey"
+      PRIMARY KEY ("sid") DEFERRABLE INITIALLY IMMEDIATE;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+
+-- Game sessions (do NOT confuse with express-session table named "session")
+CREATE TABLE IF NOT EXISTS game_sessions (
+  session_code VARCHAR(6) PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Players in a game session (persisted lobby membership)
+CREATE TABLE IF NOT EXISTS session_players (
+  id SERIAL PRIMARY KEY,
+  session_code VARCHAR(6) NOT NULL REFERENCES game_sessions(session_code) ON DELETE CASCADE,
+  display_name TEXT NOT NULL,
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_players_session_code
+  ON session_players(session_code);

@@ -6,6 +6,7 @@ import { addPlayer, createSession, getSession, removePlayer } from "./store/sess
 import type { JoinRoomPayload, LobbyUpdatePayload } from "./types/socketEvents";
 
 dotenv.config();
+console.log('DATABASE_URL exists:', Boolean(process.env['DATABASE_URL']));
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 

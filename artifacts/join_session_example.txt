@@ -1,0 +1,40 @@
+# Create session
+curl.exe -i -X POST "http://localhost:3000/api/sessions"
+
+HTTP/1.1 201 Created
+...
+{"sessionCode":"B94T6S","createdAt":"2026-03-03T13:49:47.940Z","players":[]}
+
+# Join session
+Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/sessions/B94T6S/join" -ContentType "application/json" -Body (@{ displayName="Logan" } | ConvertTo-Json)
+
+{
+  "sessionCode": "B94T6S",
+  "createdAt": "...",
+  "players": [
+    {
+      "id": 3,
+      "displayName": "Logan",
+      "joinedAt": "..."
+    }
+  ]
+}
+
+# GET session
+curl.exe -i "http://localhost:3000/api/sessions/B94T6S"
+
+HTTP/1.1 200 OK
+...
+{"sessionCode":"B94T6S","createdAt":"...","players":[...]}
+
+# Invalid session
+Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/sessions/NOPE00/join" -ContentType "application/json" -Body (@{ displayName="Logan" } | ConvertTo-Json)
+
+404 Not Found
+{"error":"Session not found"}
+
+# Invalid body
+Invoke-RestMethod -Method Post -Uri "http://localhost:3000/api/sessions/B94T6S/join" -ContentType "application/json" -Body (@{ displayName="   " } | ConvertTo-Json)
+
+400 Bad Request
+{"error":"Invalid request"}

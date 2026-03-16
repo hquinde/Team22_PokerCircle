@@ -1,15 +1,15 @@
 import express from "express";
+import sessionsRouter from "./routes/sessions";
+import { notFound, errorHandler } from "./middleware/errorMiddleware";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import cors from "cors";
 import morgan from "morgan";
 
 import pool from "./db/pool";
-import sessionsRouter from "./routes/sessions";
 import debugRouter from "./routes/debug";
 import authRouter from "./routes/auth";
 import usersRouter from "./routes/users";
-import { notFound, errorHandler } from "./middleware/errorMiddleware";
 
 const app = express();
 const PgStore = connectPgSimple(session);

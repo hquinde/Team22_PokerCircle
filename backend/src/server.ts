@@ -6,6 +6,7 @@ import { addPlayer, createSession, getSession, removePlayer } from "./store/sess
 import type { JoinRoomPayload, LobbyUpdatePayload } from "./types/socketEvents";
 
 dotenv.config();
+console.log('DATABASE_URL exists:', Boolean(process.env['DATABASE_URL']));
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
@@ -29,23 +30,29 @@ io.on("connection", (socket: Socket) => {
       createSession({ sessionCode, players: [], createdAt: new Date().toISOString() });
       session = getSession(sessionCode)!;
     }
+    if (!session) {
+      socket.emit('error', { message: `Session ${sessionCode} not found` });
+      return;
+    }
+
+    const code = session.sessionCode;
 
     const player = { playerId: socket.id, name: playerName };
 
     if (!session.players.some((p) => p.playerId === socket.id)) {
-      addPlayer(sessionCode, player);
+      addPlayer(code, player);
     }
 
-    socket.join(sessionCode);
+    socket.join(code);
 
-    const updated = getSession(sessionCode);
+    const updated = getSession(code);
     const payload: LobbyUpdatePayload = {
-      sessionCode,
+      sessionCode: code,
       players: updated?.players ?? [],
     };
-    io.to(sessionCode).emit("lobby:update", payload);
+    io.to(code).emit("lobby:update", payload);
 
-    console.log(`Joined room ${sessionCode}: ${playerName} (${socket.id})`);
+    console.log(`Joined room ${code}: ${playerName} (${socket.id})`);
   });
 
   socket.on("disconnect", () => {

@@ -6,11 +6,24 @@ All responses are JSON unless otherwise noted.
 
 ---
 
+## Session Object
+
+| Field | Type | Description |
+|---|---|---|
+| `sessionId` | `number` | Unique internal database ID |
+| `sessionCode` | `string` | 6-character unique session code |
+| `status` | `string` | Session status: `lobby`, `starting`, `active`, `finished` |
+| `gameState` | `object` | JSON object containing current poker game state |
+| `createdAt` | `string` | ISO timestamp of session creation |
+| `players` | `array` | List of players in the session |
+
+---
+
 ## Create Session
 
 ### POST `/api/sessions`
 
-Creates a new session with a unique 6-character session code.
+Creates a new session with a unique 6-character session code. Initial status is `lobby`.
 
 **Request Body**
 - None
@@ -20,18 +33,12 @@ Creates a new session with a unique 6-character session code.
 - Body:
 ```json
 {
+  "sessionId": 12,
   "sessionCode": "34ZRHE",
-  "createdAt": "2026-03-03T00:07:55.643Z",
+  "status": "lobby",
+  "gameState": {},
+  "createdAt": "2026-03-16T10:00:00.000Z",
   "players": []
-}
-```
-
-**Error Response**
-- Status: `500 Internal Server Error`
-- Body:
-```json
-{
-  "error": "Failed to generate unique session code"
 }
 ```
 
@@ -41,7 +48,7 @@ Creates a new session with a unique 6-character session code.
 
 ### GET `/api/sessions/:sessionCode`
 
-Fetches an existing session by session code. Used by the Lobby screen to load current lobby state.
+Fetches an existing session by session code. Used by the Lobby screen to load current lobby state and by the Game screen to load game state.
 
 **Path Parameters**
 - `sessionCode` (string): 6-character session code
@@ -51,18 +58,18 @@ Fetches an existing session by session code. Used by the Lobby screen to load cu
 - Body:
 ```json
 {
+  "sessionId": 5,
   "sessionCode": "38V45J",
-  "createdAt": "2026-03-03T00:06:56.722Z",
-  "players": []
-}
-```
-
-**Error Response**
-- Status: `404 Not Found`
-- Body:
-```json
-{
-  "error": "Session not found"
+  "status": "lobby",
+  "gameState": {},
+  "createdAt": "2026-03-16T10:00:00.000Z",
+  "players": [
+    {
+      "playerId": 1,
+      "displayName": "Alice",
+      "joinedAt": "2026-03-16T10:05:00.000Z"
+    }
+  ]
 }
 ```
 
@@ -72,7 +79,7 @@ Fetches an existing session by session code. Used by the Lobby screen to load cu
 
 ### POST `/api/sessions/:sessionCode/join`
 
-Adds a player to an existing session and returns the updated session, including all players currently in the lobby.
+Adds a player to an existing session and returns the updated session.
 
 **Path Parameters**
 - `sessionCode` (string): 6-character session code
@@ -84,57 +91,56 @@ Adds a player to an existing session and returns the updated session, including 
 }
 ```
 
-- `displayName` (string, required): Non-empty player name (trimmed server-side)
-
 **Success Response**
 - Status: `200 OK`
 - Body:
 ```json
 {
+  "sessionId": 8,
   "sessionCode": "B94T6S",
-  "createdAt": "2026-03-03T13:49:47.940Z",
+  "status": "lobby",
+  "gameState": {},
+  "createdAt": "2026-03-16T10:00:00.000Z",
   "players": [
     {
-      "id": 3,
+      "playerId": 3,
       "displayName": "Logan",
-      "joinedAt": "2026-03-03T13:50:24.292Z"
+      "joinedAt": "2026-03-16T10:10:00.000Z"
     }
   ]
 }
 ```
 
-**Error Responses**
-
-**Invalid Request Body**
-- Status: `400 Bad Request`
-```json
-{
-  "error": "Invalid request"
-}
-```
-
-**Session Not Found**
-- Status: `404 Not Found`
-```json
-{
-  "error": "Session not found"
-}
-```
-
 ---
 
-## Route Health Check
+## Update Session Status
 
-### GET `/api/sessions`
+### PATCH `/api/sessions/:sessionCode/status`
 
-Basic route reachability check.
+Updates the session status (e.g., transition from `lobby` to `starting`).
+
+**Path Parameters**
+- `sessionCode` (string): 6-character session code
+
+**Request Body**
+```json
+{
+  "status": "starting"
+}
+```
+
+- `status` (string, required): One of `lobby`, `starting`, `active`, `finished`.
 
 **Success Response**
 - Status: `200 OK`
 - Body:
 ```json
 {
-  "status": "ok",
-  "message": "sessions route reachable"
+  "sessionId": 8,
+  "sessionCode": "B94T6S",
+  "status": "starting",
+  "gameState": {},
+  "createdAt": "2026-03-16T10:00:00.000Z",
+  "players": [...]
 }
 ```

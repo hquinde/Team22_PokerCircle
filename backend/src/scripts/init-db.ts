@@ -24,8 +24,10 @@ const initDb = async () => {
     await client.query(`
       CREATE TABLE IF NOT EXISTS game_sessions (
         id SERIAL PRIMARY KEY,
-        sessionCode TEXT NOT NULL UNIQUE,
-        createdAt TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        session_code TEXT NOT NULL UNIQUE,
+        status VARCHAR(20) NOT NULL DEFAULT 'lobby',
+        game_state JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
 
@@ -33,16 +35,16 @@ const initDb = async () => {
     await client.query(`
       CREATE TABLE IF NOT EXISTS players (
         id SERIAL PRIMARY KEY,
-        sessionId INTEGER NOT NULL,
-        displayName TEXT NOT NULL,
-        joinedAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        session_id INTEGER NOT NULL,
+        display_name TEXT NOT NULL,
+        joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
         CONSTRAINT fk_players_session
-          FOREIGN KEY (sessionId)
+          FOREIGN KEY (session_id)
           REFERENCES game_sessions(id)
           ON DELETE CASCADE,
 
-        CONSTRAINT unique_player_name_per_session UNIQUE (sessionId, displayName)
+        CONSTRAINT unique_player_name_per_session UNIQUE (session_id, display_name)
       );
     `);
 

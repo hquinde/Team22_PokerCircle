@@ -1,25 +1,63 @@
-import { StyleSheet, Text, View, Pressable } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View, Pressable } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { colors } from '../theme/colors';
+import { createSession } from '../api/api';
 
 type Props = StackScreenProps<RootStackParamList, 'Home'>;
 
 export default function HomeScreen({ navigation }: Props) {
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  async function handleCreateSession() {
+    setCreateError(null);
+    setCreating(true);
+    try {
+      const session = await createSession();
+      navigation.navigate('Lobby', { sessionCode: session.sessionCode });
+    } catch (err: unknown) {
+      setCreateError(err instanceof Error ? err.message : 'Failed to create session');
+    } finally {
+      setCreating(false);
+    }
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>PokerCircle</Text>
 
       <View style={styles.buttonContainer}>
-        {/* Get Started */}
+        {/* Create Session */}
         <Pressable
           style={({ pressed }) => [
             styles.primaryButton,
+            (pressed || creating) && styles.buttonPressed,
+          ]}
+          onPress={handleCreateSession}
+          disabled={creating}
+        >
+          {creating ? (
+            <ActivityIndicator color={colors.textOnPrimary} />
+          ) : (
+            <Text style={styles.primaryButtonText}>Create Session</Text>
+          )}
+        </Pressable>
+
+        {createError !== null && (
+          <Text style={styles.errorText}>{createError}</Text>
+        )}
+
+        {/* Join Session */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.secondaryButton,
             pressed && styles.buttonPressed,
           ]}
           onPress={() => navigation.navigate('JoinSession')}
         >
-          <Text style={styles.primaryButtonText}>Get Started</Text>
+          <Text style={styles.secondaryButtonText}>Join Session</Text>
         </Pressable>
 
         {/* Find Friends */}
@@ -86,6 +124,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: colors.primary,
+    marginBottom: 14,
   },
 
   secondaryButtonText: {
@@ -98,5 +137,12 @@ const styles = StyleSheet.create({
   buttonPressed: {
     opacity: 0.85,
     transform: [{ scale: 0.97 }],
+  },
+
+  errorText: {
+    color: colors.primary,
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 14,
   },
 });

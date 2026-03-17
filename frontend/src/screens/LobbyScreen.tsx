@@ -5,6 +5,7 @@ import type { RootStackParamList } from '../../App';
 import type { Player } from '../types/session';
 import { socket } from '../services/socket';
 import { colors } from '../theme/colors';
+import { getSession } from '../api/api';
 
 type Props = StackScreenProps<RootStackParamList, 'Lobby'>;
 
@@ -13,9 +14,14 @@ type LobbyUpdatePayload = {
   players: Player[];
 };
 
+const READY_GREEN = '#22C55E';
+
 export default function LobbyScreen({ route, navigation }: Props) {
   const { sessionCode, devPlayerName } = route.params;
   const [players, setPlayers] = useState<Player[]>([]);
+  const [myPlayerName, setMyPlayerName] = useState<string | null>(null);
+  const [myIsReady, setMyIsReady] = useState(false);
+  const [isHost, setIsHost] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -24,6 +30,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
     async function init() {
       try {
         let playerName: string;
+        let myUserId: string | null = null;
 
         if (devPlayerName !== undefined) {
           playerName = devPlayerName;
@@ -35,15 +42,30 @@ export default function LobbyScreen({ route, navigation }: Props) {
             if (active) setError('Not authenticated. Please log in again.');
             return;
           }
-          const data = (await res.json()) as { username: string };
+          const data = (await res.json()) as { userID: string; username: string };
           if (!active) return;
           playerName = data.username;
+          myUserId = data.userID;
         }
+
+        // Fetch session to determine host
+        try {
+          const session = await getSession(sessionCode);
+          if (active && myUserId !== null) {
+            setIsHost(session.hostUserId === myUserId);
+          }
+        } catch {
+          // Non-fatal: host badge won't show but lobby still works
+        }
+
+        if (active) setMyPlayerName(playerName);
 
         socket.connect();
 
         socket.on('lobby:update', (payload: LobbyUpdatePayload) => {
           setPlayers(payload.players);
+          const me = payload.players.find((p) => p.name === playerName);
+          if (me) setMyIsReady(me.isReady);
         });
 
         socket.on('error', (payload: { message: string }) => {
@@ -65,6 +87,46 @@ export default function LobbyScreen({ route, navigation }: Props) {
       socket.disconnect();
     };
   }, [sessionCode, devPlayerName]);
+
+  async function handleReadyToggle() {
+    if (!myPlayerName) return;
+    const next = !myIsReady;
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/sessions/${sessionCode}/ready`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName: myPlayerName, isReady: next }),
+        }
+      );
+      if (!res.ok) {
+        const body = (await res.json()) as { error?: string };
+        setError(body.error ?? 'Failed to update ready status.');
+      }
+    } catch {
+      setError('Could not reach server.');
+    }
+  }
+
+  async function handleStartGame() {
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/sessions/${sessionCode}/start`,
+        {
+          method: 'POST',
+          credentials: 'include',
+        }
+      );
+      if (!res.ok) {
+        const body = (await res.json()) as { error?: string };
+        setError(body.error ?? 'Failed to start game.');
+      }
+      // Navigation to game screen goes here in a future story
+    } catch {
+      setError('Could not reach server.');
+    }
+  }
 
   if (error) {
     return (
@@ -91,16 +153,44 @@ export default function LobbyScreen({ route, navigation }: Props) {
       <FlatList
         data={players}
         keyExtractor={(item) => item.playerId}
-        renderItem={({ item }) => (
-          <View style={styles.playerRow}>
-            <Text style={styles.playerName}>{item.name}</Text>
-          </View>
-        )}
+        renderItem={({ item }) => {
+          const isMe = item.name === myPlayerName;
+          return (
+            <View style={styles.playerRow}>
+              <Text style={styles.playerName}>{item.name}</Text>
+              {isMe && isHost && (
+                <Text style={styles.hostBadge}>HOST</Text>
+              )}
+              <View style={[styles.readyDot, item.isReady && styles.readyDotActive]} />
+            </View>
+          );
+        }}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <Text style={styles.emptyText}>Waiting for players...</Text>
         }
       />
+
+      <View style={styles.footer}>
+        {isHost && (
+          <Pressable
+            style={({ pressed }) => [styles.startButton, pressed && styles.buttonPressed]}
+            onPress={handleStartGame}
+          >
+            <Text style={styles.startButtonText}>Start Game</Text>
+          </Pressable>
+        )}
+
+        <Pressable
+          style={[styles.readyButton, myIsReady && styles.readyButtonActive]}
+          onPress={handleReadyToggle}
+          disabled={myPlayerName === null}
+        >
+          <Text style={styles.readyButtonText}>
+            {myIsReady ? 'Unready' : 'Ready'}
+          </Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
@@ -131,6 +221,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   playerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 16,
     backgroundColor: colors.inputBackground,
@@ -140,8 +232,25 @@ const styles = StyleSheet.create({
     borderColor: colors.inputBorder,
   },
   playerName: {
+    flex: 1,
     fontSize: 16,
     color: colors.text,
+  },
+  hostBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: 1,
+    marginRight: 8,
+  },
+  readyDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.disabled,
+  },
+  readyDotActive: {
+    backgroundColor: READY_GREEN,
   },
   emptyText: {
     textAlign: 'center',
@@ -169,6 +278,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
+    color: colors.textOnPrimary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  footer: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    paddingTop: 8,
+    gap: 10,
+  },
+  startButton: {
+    backgroundColor: READY_GREEN,
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  startButtonText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  buttonPressed: {
+    opacity: 0.85,
+  },
+  readyButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  readyButtonActive: {
+    backgroundColor: READY_GREEN,
+  },
+  readyButtonText: {
     color: colors.textOnPrimary,
     fontSize: 16,
     fontWeight: '600',

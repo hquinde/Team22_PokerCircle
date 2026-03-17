@@ -12,3 +12,16 @@ export async function getSession(sessionCode: string): Promise<Session> {
   }
   return response.json() as Promise<Session>;
 }
+
+export async function createSession(): Promise<Session> {
+  const response = await fetch(`${BASE_URL}/api/sessions`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw new Error(body.error ?? 'Failed to create session');
+  }
+  return response.json() as Promise<Session>;
+}

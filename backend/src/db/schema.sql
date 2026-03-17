@@ -31,8 +31,9 @@ CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
 
 -- Game sessions (do NOT confuse with express-session table named "session")
 CREATE TABLE IF NOT EXISTS game_sessions (
-  session_code VARCHAR(6) PRIMARY KEY,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  session_code  VARCHAR(6) PRIMARY KEY,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  host_user_id  TEXT NOT NULL REFERENCES users("userID")
 );
 
 -- Players in a game session (persisted lobby membership)
@@ -40,7 +41,8 @@ CREATE TABLE IF NOT EXISTS session_players (
   id SERIAL PRIMARY KEY,
   session_code VARCHAR(6) NOT NULL REFERENCES game_sessions(session_code) ON DELETE CASCADE,
   display_name TEXT NOT NULL,
-  joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  is_ready BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE INDEX IF NOT EXISTS idx_session_players_session_code

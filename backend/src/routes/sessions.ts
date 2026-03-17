@@ -1,7 +1,11 @@
 import { Router, Request, Response } from "express";
 import asyncHandler from "../middleware/asyncHandler";
+import { requireAuth } from "../middleware/requireAuth";
 import pool from "../db/pool";
 import { generateSessionCode } from "../utils/sessionCode";
+import type { Server } from "socket.io";
+import { setPlayerReadyByName, getSession } from "../store/sessionStore";
+import type { LobbyUpdatePayload } from "../types/socketEvents";
 
 
 const router = Router();
@@ -12,7 +16,9 @@ router.get("/", (req, res) => {
 
 router.post(
   "/",
+  requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
+    const hostUserId = req.session.userId!;
     let attempts = 0;
 
     while (attempts < 20) {
@@ -21,23 +27,23 @@ router.post(
       try {
         const result = await pool.query(
           `
-          INSERT INTO game_sessions (sessioncode)
-          VALUES ($1)
-          RETURNING id, sessioncode, createdat;
+          INSERT INTO game_sessions (session_code, host_user_id)
+          VALUES ($1, $2)
+          RETURNING session_code, created_at, host_user_id;
           `,
-          [sessionCode]
+          [sessionCode, hostUserId]
         );
 
         const row = result.rows[0];
 
         return res.status(201).json({
-          sessionId: row.id,
-          sessionCode: row.sessioncode,
-          createdAt: row.createdat,
+          sessionCode: row.session_code,
+          createdAt: row.created_at,
+          hostUserId: row.host_user_id,
           players: [],
         });
-      } catch (err: any) {
-        if (err?.code === "23505") {
+      } catch (err: unknown) {
+        if ((err as { code?: string })?.code === "23505") {
           attempts++;
           continue;
         }
@@ -52,22 +58,22 @@ router.post(
 router.get(
   "/:sessionCode",
   asyncHandler(async (req: Request, res: Response) => {
-    const sessionCode = req.params.sessionCode;
+    const sessionCode = (req.params as { sessionCode: string }).sessionCode;
 
     const result = await pool.query(
       `
       SELECT
-        gs.id          AS "sessionId",
-        gs.sessioncode AS "sessionCode",
-        gs.createdat   AS "createdAt",
-        p.id           AS "playerId",
-        p.displayname  AS "displayName",
-        p.joinedat     AS "joinedAt"
+        gs.session_code  AS "sessionCode",
+        gs.created_at    AS "createdAt",
+        gs.host_user_id  AS "hostUserId",
+        p.id             AS "playerId",
+        p.display_name   AS "displayName",
+        p.joined_at      AS "joinedAt",
+        p.is_ready       AS "isReady"
       FROM game_sessions gs
-      LEFT JOIN players p
-        ON p.sessionid = gs.id
-      WHERE gs.sessioncode = $1
-      ORDER BY p.joinedat ASC NULLS LAST;
+      LEFT JOIN session_players p ON p.session_code = gs.session_code
+      WHERE gs.session_code = $1
+      ORDER BY p.joined_at ASC NULLS LAST;
       `,
       [sessionCode]
     );
@@ -81,15 +87,16 @@ router.get(
     const players = result.rows
       .filter((r) => r.playerId !== null)
       .map((r) => ({
-        playerId: r.playerId,
+        playerId: String(r.playerId),
         displayName: r.displayName,
         joinedAt: r.joinedAt,
+        isReady: r.isReady,
       }));
 
     return res.status(200).json({
-      sessionId: first.sessionId,
       sessionCode: first.sessionCode,
       createdAt: first.createdAt,
+      hostUserId: first.hostUserId,
       players,
     });
   })
@@ -98,16 +105,15 @@ router.get(
 router.post(
   "/:sessionCode/join",
   asyncHandler(async (req: Request, res: Response) => {
-    const sessionCode = req.params.sessionCode;
+    const sessionCode = (req.params as { sessionCode: string }).sessionCode;
     const { displayName } = req.body as { displayName?: string };
 
     if (!displayName || displayName.trim().length === 0) {
       return res.status(400).json({ error: "displayName is required" });
     }
 
-    // Find session
     const sessionResult = await pool.query(
-      `SELECT id, sessioncode, createdat FROM game_sessions WHERE sessioncode = $1`,
+      `SELECT session_code, created_at, host_user_id FROM game_sessions WHERE session_code = $1`,
       [sessionCode]
     );
 
@@ -115,35 +121,32 @@ router.post(
       return res.status(404).json({ error: "Session not found" });
     }
 
-    const sessionId = sessionResult.rows[0].id;
-
     try {
       await pool.query(
-        `INSERT INTO players (sessionid, displayname) VALUES ($1, $2)`,
-        [sessionId, displayName.trim()]
+        `INSERT INTO session_players (session_code, display_name) VALUES ($1, $2)`,
+        [sessionCode, displayName.trim()]
       );
-    } catch (err: any) {
-      if (err?.code === "23505") {
+    } catch (err: unknown) {
+      if ((err as { code?: string })?.code === "23505") {
         return res.status(409).json({ error: "Player name already exists in this session" });
       }
       throw err;
     }
 
-    // Return updated state
     const stateResult = await pool.query(
       `
       SELECT
-        gs.id          AS "sessionId",
-        gs.sessioncode AS "sessionCode",
-        gs.createdat   AS "createdAt",
-        p.id           AS "playerId",
-        p.displayname  AS "displayName",
-        p.joinedat     AS "joinedAt"
+        gs.session_code  AS "sessionCode",
+        gs.created_at    AS "createdAt",
+        gs.host_user_id  AS "hostUserId",
+        p.id             AS "playerId",
+        p.display_name   AS "displayName",
+        p.joined_at      AS "joinedAt",
+        p.is_ready       AS "isReady"
       FROM game_sessions gs
-      LEFT JOIN players p
-        ON p.sessionid = gs.id
-      WHERE gs.sessioncode = $1
-      ORDER BY p.joinedat ASC NULLS LAST;
+      LEFT JOIN session_players p ON p.session_code = gs.session_code
+      WHERE gs.session_code = $1
+      ORDER BY p.joined_at ASC NULLS LAST;
       `,
       [sessionCode]
     );
@@ -153,17 +156,81 @@ router.post(
     const players = stateResult.rows
       .filter((r) => r.playerId !== null)
       .map((r) => ({
-        playerId: r.playerId,
+        playerId: String(r.playerId),
         displayName: r.displayName,
         joinedAt: r.joinedAt,
+        isReady: r.isReady,
       }));
 
     return res.status(200).json({
-      sessionId: first.sessionId,
       sessionCode: first.sessionCode,
       createdAt: first.createdAt,
+      hostUserId: first.hostUserId,
       players,
     });
+  })
+);
+
+router.post(
+  "/:sessionCode/ready",
+  asyncHandler(async (req: Request, res: Response) => {
+    const sessionCode = (req.params as { sessionCode: string }).sessionCode;
+    const { displayName, isReady } = req.body as { displayName?: string; isReady?: boolean };
+
+    if (!displayName || displayName.trim().length === 0) {
+      return res.status(400).json({ error: "displayName is required" });
+    }
+    if (typeof isReady !== "boolean") {
+      return res.status(400).json({ error: "isReady must be a boolean" });
+    }
+
+    const cleanName: string = displayName.trim();
+    const readyValue: boolean = isReady;
+
+    const result = await pool.query(
+      `UPDATE session_players SET is_ready = $1 WHERE session_code = $2 AND display_name = $3`,
+      [readyValue, sessionCode, cleanName]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Player not found in session" });
+    }
+
+    setPlayerReadyByName(sessionCode, cleanName, readyValue);
+
+    const session = getSession(sessionCode);
+    const io: Server = req.app.get("io");
+    const payload: LobbyUpdatePayload = {
+      sessionCode,
+      players: session?.players ?? [],
+    };
+    io.to(sessionCode).emit("lobby:update", payload);
+
+    return res.status(200).json({ sessionCode, displayName: cleanName, isReady: readyValue });
+  })
+);
+
+router.post(
+  "/:sessionCode/start",
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const sessionCode = (req.params as { sessionCode: string }).sessionCode;
+
+    const result = await pool.query(
+      `SELECT host_user_id FROM game_sessions WHERE session_code = $1`,
+      [sessionCode]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    if (result.rows[0].host_user_id !== req.session.userId) {
+      return res.status(403).json({ error: "Only the host can start the game" });
+    }
+
+    // Placeholder — game start logic goes here in a future story
+    return res.status(200).json({ message: "Game started", sessionCode });
   })
 );
 

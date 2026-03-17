@@ -1,10 +1,12 @@
-export interface Player {
+export type Player = {
   playerId: string;
   name: string;
-}
+  isReady: boolean;
+};
 
-export interface Session {
+export type Session = {
   sessionCode: string;
-  createdAt: string; // ISO string is easiest for JSON
+  createdAt: string;
+  hostUserId?: string;
   players: Player[];
-}
+};

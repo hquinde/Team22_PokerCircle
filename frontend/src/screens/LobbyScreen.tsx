@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
@@ -14,7 +14,7 @@ type LobbyUpdatePayload = {
   players: Player[];
 };
 
-const READY_GREEN = '#22C55E';
+const BACKEND_URL = 'http://localhost:3000';
 
 export default function LobbyScreen({ route, navigation }: Props) {
   const { sessionCode, devPlayerName } = route.params;
@@ -23,58 +23,113 @@ export default function LobbyScreen({ route, navigation }: Props) {
   const [myIsReady, setMyIsReady] = useState(false);
   const [isHost, setIsHost] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isJoining, setIsJoining] = useState(true);
+  const [joinMessage, setJoinMessage] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const previousPlayersRef = useRef<Player[]>([]);
 
   useEffect(() => {
     let active = true;
+    let resolvedPlayerName = '';
+
+    const handleLobbyUpdate = (payload: LobbyUpdatePayload) => {
+      if (!active) return;
+
+      console.log('Received lobby:update', payload);
+
+      const previousPlayers = previousPlayersRef.current;
+      const currentPlayers = payload.players;
+
+      if (previousPlayers.length === 0 && currentPlayers.length > 0) {
+        setJoinMessage(`Joined session ${payload.sessionCode}`);
+        setStatusMessage(null);
+      } else if (previousPlayers.length < currentPlayers.length) {
+        setStatusMessage('A player joined the lobby.');
+      } else if (previousPlayers.length > currentPlayers.length) {
+        setStatusMessage('A player left the lobby.');
+      }
+
+      previousPlayersRef.current = currentPlayers;
+      setPlayers(currentPlayers);
+      setIsJoining(false);
+    };
+
+    const handleSocketError = (payload: { message: string }) => {
+      if (!active) return;
+      console.log('Socket error received', payload);
+      setError(payload.message);
+      setIsJoining(false);
+    };
+
+    const handleConnectError = (err: any) => {
+      if (!active) return;
+      console.log('Socket connect_error in LobbyScreen', err?.message);
+      setError('Could not connect to lobby server.');
+      setIsJoining(false);
+    };
+
+    const handleReconnect = () => {
+      if (!active || !resolvedPlayerName) return;
+
+      console.log('Reconnected — rejoining session');
+      setStatusMessage('Reconnected to lobby.');
+
+      socket.emit('session:joinRoom', {
+        sessionCode,
+        playerName: resolvedPlayerName,
+      });
+    };
+
+    const handleConnect = () => {
+      if (!active || !resolvedPlayerName) return;
+
+      console.log('Socket connected in LobbyScreen, joining room', {
+        sessionCode,
+        playerName: resolvedPlayerName,
+      });
+
+      socket.emit('session:joinRoom', {
+        sessionCode,
+        playerName: resolvedPlayerName,
+      });
+    };
 
     async function init() {
       try {
-        let playerName: string;
-        let myUserId: string | null = null;
-
         if (devPlayerName !== undefined) {
-          playerName = devPlayerName;
+          resolvedPlayerName = devPlayerName;
         } else {
-          const res = await fetch('http://localhost:3000/api/auth/me', {
+          const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
             credentials: 'include',
           });
+
           if (!res.ok) {
-            if (active) setError('Not authenticated. Please log in again.');
+            if (active) {
+              setError('Not authenticated. Please log in again.');
+              setIsJoining(false);
+            }
             return;
           }
-          const data = (await res.json()) as { userID: string; username: string };
+
+          const data = (await res.json()) as { username: string };
           if (!active) return;
-          playerName = data.username;
-          myUserId = data.userID;
+          resolvedPlayerName = data.username;
         }
 
-        // Fetch session to determine host
-        try {
-          const session = await getSession(sessionCode);
-          if (active && myUserId !== null) {
-            setIsHost(session.hostUserId === myUserId);
-          }
-        } catch {
-          // Non-fatal: host badge won't show but lobby still works
-        }
+        socket.on('lobby:update', handleLobbyUpdate);
+        socket.on('error', handleSocketError);
+        socket.on('reconnect', handleReconnect);
+        socket.on('connect', handleConnect);
+        socket.on('connect_error', handleConnectError);
 
-        if (active) setMyPlayerName(playerName);
-
+        console.log('About to connect socket');
         socket.connect();
-
-        socket.on('lobby:update', (payload: LobbyUpdatePayload) => {
-          setPlayers(payload.players);
-          const me = payload.players.find((p) => p.name === playerName);
-          if (me) setMyIsReady(me.isReady);
-        });
-
-        socket.on('error', (payload: { message: string }) => {
-          if (active) setError(payload.message);
-        });
-
-        socket.emit('session:joinRoom', { sessionCode, playerName });
-      } catch {
-        if (active) setError('Could not connect to server.');
+      } catch (err) {
+        console.error('Lobby init error', err);
+        if (active) {
+          setError('Could not connect to server.');
+          setIsJoining(false);
+        }
       }
     }
 
@@ -82,51 +137,24 @@ export default function LobbyScreen({ route, navigation }: Props) {
 
     return () => {
       active = false;
-      socket.off('lobby:update');
-      socket.off('error');
+      socket.off('lobby:update', handleLobbyUpdate);
+      socket.off('error', handleSocketError);
+      socket.off('reconnect', handleReconnect);
+      socket.off('connect', handleConnect);
+      socket.off('connect_error', handleConnectError);
       socket.disconnect();
     };
   }, [sessionCode, devPlayerName]);
 
-  async function handleReadyToggle() {
-    if (!myPlayerName) return;
-    const next = !myIsReady;
-    try {
-      const res = await fetch(
-        `http://localhost:3000/api/sessions/${sessionCode}/ready`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ displayName: myPlayerName, isReady: next }),
-        }
-      );
-      if (!res.ok) {
-        const body = (await res.json()) as { error?: string };
-        setError(body.error ?? 'Failed to update ready status.');
-      }
-    } catch {
-      setError('Could not reach server.');
-    }
-  }
+  useEffect(() => {
+    if (!statusMessage) return;
 
-  async function handleStartGame() {
-    try {
-      const res = await fetch(
-        `http://localhost:3000/api/sessions/${sessionCode}/start`,
-        {
-          method: 'POST',
-          credentials: 'include',
-        }
-      );
-      if (!res.ok) {
-        const body = (await res.json()) as { error?: string };
-        setError(body.error ?? 'Failed to start game.');
-      }
-      // Navigation to game screen goes here in a future story
-    } catch {
-      setError('Could not reach server.');
-    }
-  }
+    const timer = setTimeout(() => {
+      setStatusMessage(null);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [statusMessage]);
 
   if (error) {
     return (
@@ -150,24 +178,41 @@ export default function LobbyScreen({ route, navigation }: Props) {
         </Text>
       </View>
 
+      {isJoining && (
+        <View style={styles.infoBox}>
+          <Text style={styles.infoText}>Joining lobby...</Text>
+        </View>
+      )}
+
+      {joinMessage && !isJoining && (
+        <View style={styles.successBox}>
+          <Text style={styles.successText}>{joinMessage}</Text>
+        </View>
+      )}
+
+      {statusMessage && !isJoining && (
+        <View style={styles.statusBox}>
+          <Text style={styles.statusText}>{statusMessage}</Text>
+        </View>
+      )}
+
       <FlatList
         data={players}
         keyExtractor={(item) => item.playerId}
-        renderItem={({ item }) => {
-          const isMe = item.name === myPlayerName;
-          return (
-            <View style={styles.playerRow}>
+        renderItem={({ item, index }) => (
+          <View style={styles.playerRow}>
+            <View>
               <Text style={styles.playerName}>{item.name}</Text>
-              {isMe && isHost && (
-                <Text style={styles.hostBadge}>HOST</Text>
-              )}
-              <View style={[styles.readyDot, item.isReady && styles.readyDotActive]} />
+              <Text style={styles.playerLabel}>Player {index + 1}</Text>
             </View>
-          );
-        }}
+          </View>
+        )}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>Waiting for players...</Text>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>Lobby is empty</Text>
+            <Text style={styles.emptyText}>Waiting for players to join...</Text>
+          </View>
         }
       />
 
@@ -216,6 +261,52 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginTop: 8,
   },
+  infoBox: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: colors.inputBackground,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+  },
+  infoText: {
+    color: colors.text,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  successBox: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: colors.inputBackground,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  successText: {
+    color: colors.primary,
+    fontSize: 14,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  statusBox: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: colors.inputBackground,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+  },
+  statusText: {
+    color: colors.text,
+    fontSize: 14,
+    textAlign: 'center',
+  },
   listContent: {
     paddingHorizontal: 16,
     flexGrow: 1,
@@ -235,28 +326,28 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: colors.text,
+    fontWeight: '600',
   },
-  hostBadge: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primary,
-    letterSpacing: 1,
-    marginRight: 8,
+  playerLabel: {
+    marginTop: 4,
+    fontSize: 12,
+    color: colors.placeholder,
   },
-  readyDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.disabled,
+  emptyState: {
+    marginTop: 48,
+    alignItems: 'center',
+    paddingHorizontal: 24,
   },
-  readyDotActive: {
-    backgroundColor: READY_GREEN,
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
   },
   emptyText: {
     textAlign: 'center',
     color: colors.placeholder,
     fontSize: 16,
-    marginTop: 32,
   },
   errorContent: {
     flex: 1,

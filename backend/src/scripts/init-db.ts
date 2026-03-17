@@ -23,8 +23,8 @@ const initDb = async () => {
     // Lobby sessions (NOT express-session "session" table)
     await client.query(`
       CREATE TABLE IF NOT EXISTS game_sessions (
-        id SERIAL PRIMARY KEY,
-        session_code TEXT NOT NULL UNIQUE,
+        session_code VARCHAR(6) PRIMARY KEY,
+        host_user_id UUID NOT NULL REFERENCES users(user_id),
         status VARCHAR(20) NOT NULL DEFAULT 'lobby',
         game_state JSONB DEFAULT '{}'::jsonb,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -33,18 +33,19 @@ const initDb = async () => {
 
     // Players in a lobby
     await client.query(`
-      CREATE TABLE IF NOT EXISTS players (
+      CREATE TABLE IF NOT EXISTS session_players (
         id SERIAL PRIMARY KEY,
-        session_id INTEGER NOT NULL,
+        session_code VARCHAR(6) NOT NULL,
         display_name TEXT NOT NULL,
+        is_ready BOOLEAN NOT NULL DEFAULT FALSE,
         joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-        CONSTRAINT fk_players_session
-          FOREIGN KEY (session_id)
-          REFERENCES game_sessions(id)
+        CONSTRAINT fk_session_players_session
+          FOREIGN KEY (session_code)
+          REFERENCES game_sessions(session_code)
           ON DELETE CASCADE,
 
-        CONSTRAINT unique_player_name_per_session UNIQUE (session_id, display_name)
+        CONSTRAINT unique_player_name_per_session UNIQUE (session_code, display_name)
       );
     `);
 

@@ -6,14 +6,15 @@ export interface GameState {
 }
 
 export interface Player {
-  playerId: number;
+  playerId: string;
   displayName: string;
   joinedAt: string;
+  isReady: boolean;
 }
 
 export interface Session {
-  sessionId: number;
   sessionCode: string;
+  hostUserId: string;
   status: SessionStatus;
   gameState: GameState;
   createdAt: string;

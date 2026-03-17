@@ -34,21 +34,22 @@ CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
 
 -- Game sessions
 CREATE TABLE IF NOT EXISTS game_sessions (
-  id SERIAL PRIMARY KEY,
-  session_code VARCHAR(6) UNIQUE NOT NULL,
+  session_code VARCHAR(6) PRIMARY KEY,
+  host_user_id UUID NOT NULL REFERENCES users(user_id),
   status VARCHAR(20) NOT NULL DEFAULT 'lobby',
   game_state JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Players in a game session
-CREATE TABLE IF NOT EXISTS players (
+-- Players in a game session (persisted lobby membership)
+CREATE TABLE IF NOT EXISTS session_players (
   id SERIAL PRIMARY KEY,
-  session_id INTEGER NOT NULL REFERENCES game_sessions(id) ON DELETE CASCADE,
+  session_code VARCHAR(6) NOT NULL REFERENCES game_sessions(session_code) ON DELETE CASCADE,
   display_name TEXT NOT NULL,
+  is_ready BOOLEAN NOT NULL DEFAULT FALSE,
   joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CONSTRAINT unique_player_name_per_session UNIQUE (session_id, display_name)
+  CONSTRAINT unique_player_name_per_session UNIQUE (session_code, display_name)
 );
 
-CREATE INDEX IF NOT EXISTS idx_players_session_id
-  ON players(session_id);
+CREATE INDEX IF NOT EXISTS idx_session_players_session_code
+  ON session_players(session_code);

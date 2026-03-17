@@ -9,29 +9,32 @@ export async function getSessionWithPlayers(sessionCode: string): Promise<Sessio
   const code = normalizeSessionCode(sessionCode);
 
   const sessionRes = await pool.query(
-    'SELECT id, session_code, status, game_state, created_at FROM game_sessions WHERE session_code = $1',
+    'SELECT session_code, host_user_id, status, game_state, created_at FROM game_sessions WHERE session_code = $1',
     [code]
   );
 
   if (sessionRes.rowCount === 0) return null;
 
   const playersRes = await pool.query(
-    `SELECT id, display_name, joined_at
-     FROM players
-     WHERE session_id = $1
+    `SELECT id, display_name, is_ready, joined_at
+     FROM session_players
+     WHERE session_code = $1
      ORDER BY joined_at ASC`,
-    [sessionRes.rows[0].id]
+    [code]
   );
 
+  const sessionRow = sessionRes.rows[0];
+
   return {
-    sessionId: sessionRes.rows[0].id,
-    sessionCode: sessionRes.rows[0].session_code,
-    status: sessionRes.rows[0].status,
-    gameState: sessionRes.rows[0].game_state,
-    createdAt: sessionRes.rows[0].created_at,
+    sessionCode: sessionRow.session_code,
+    hostUserId: sessionRow.host_user_id,
+    status: sessionRow.status,
+    gameState: sessionRow.game_state,
+    createdAt: sessionRow.created_at,
     players: playersRes.rows.map((r) => ({
-      playerId: r.id,
+      playerId: String(r.id),
       displayName: r.display_name,
+      isReady: r.is_ready,
       joinedAt: r.joined_at,
     })),
   };
@@ -44,29 +47,26 @@ export async function addPlayerToSession(
   const code = normalizeSessionCode(sessionCode);
   const name = displayName.trim();
 
-  const session = await getSessionWithPlayers(code);
-  if (!session) return null;
-
   await pool.query(
-    'INSERT INTO players (session_id, display_name) VALUES ($1, $2)',
-    [session.sessionId, name]
+    'INSERT INTO session_players (session_code, display_name) VALUES ($1, $2)',
+    [code, name]
   );
 
   return getSessionWithPlayers(code);
 }
 
-export async function createSessionInDb(sessionCode: string): Promise<Session> {
+export async function createSessionInDb(sessionCode: string, hostUserId: string): Promise<Session> {
   const code = normalizeSessionCode(sessionCode);
 
   const insertRes = await pool.query(
-    'INSERT INTO game_sessions (session_code) VALUES ($1) RETURNING id, session_code, status, game_state, created_at',
-    [code]
+    'INSERT INTO game_sessions (session_code, host_user_id) VALUES ($1, $2) RETURNING session_code, host_user_id, status, game_state, created_at',
+    [code, hostUserId]
   );
 
   const row = insertRes.rows[0];
   return {
-    sessionId: row.id,
     sessionCode: row.session_code,
+    hostUserId: row.host_user_id,
     status: row.status,
     gameState: row.game_state,
     createdAt: row.created_at,
@@ -81,13 +81,29 @@ export async function updateSessionStatus(
   const code = normalizeSessionCode(sessionCode);
 
   const updateRes = await pool.query(
-    'UPDATE game_sessions SET status = $1 WHERE session_code = $2 RETURNING id',
+    'UPDATE game_sessions SET status = $1 WHERE session_code = $2 RETURNING session_code',
     [status, code]
   );
 
   if (updateRes.rowCount === 0) return null;
 
   return getSessionWithPlayers(code);
+}
+
+export async function updatePlayerReady(
+  sessionCode: string,
+  displayName: string,
+  isReady: boolean
+): Promise<boolean> {
+  const code = normalizeSessionCode(sessionCode);
+  const name = displayName.trim();
+
+  const result = await pool.query(
+    'UPDATE session_players SET is_ready = $1 WHERE session_code = $2 AND display_name = $3',
+    [isReady, code, name]
+  );
+
+  return (result.rowCount ?? 0) > 0;
 }
 
 export async function sessionExistsInDb(sessionCode: string): Promise<boolean> {

@@ -8,6 +8,18 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Friend Requests table
+CREATE TABLE IF NOT EXISTS friend_requests (
+  id SERIAL PRIMARY KEY,
+  sender_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  receiver_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, accepted, rejected
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT no_self_request CHECK (sender_id != receiver_id),
+  CONSTRAINT unique_friend_request UNIQUE (sender_id, receiver_id)
+);
+
 -- Express-session store table (connect-pg-simple)
 CREATE TABLE IF NOT EXISTS "session" (
   "sid"    varchar        NOT NULL COLLATE "default",

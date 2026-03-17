@@ -10,31 +10,35 @@ All responses are JSON unless otherwise noted.
 
 | Field | Type | Description |
 |---|---|---|
-| `sessionId` | `number` | Unique internal database ID |
 | `sessionCode` | `string` | 6-character unique session code |
+| `hostUserId` | `string` | UUID of the user who created the session |
 | `status` | `string` | Session status: `lobby`, `starting`, `active`, `finished` |
 | `gameState` | `object` | JSON object containing current poker game state |
 | `createdAt` | `string` | ISO timestamp of session creation |
 | `players` | `array` | List of players in the session |
 
+### Player Object
+| Field | Type | Description |
+|---|---|---|
+| `playerId` | `string` | Unique internal database ID |
+| `displayName` | `string` | Name chosen by the player |
+| `isReady` | `boolean` | Whether the player is ready to start |
+| `joinedAt` | `string` | ISO timestamp of when the player joined |
+
 ---
 
-## Create Session
+## Create Session (Auth Required)
 
 ### POST `/api/sessions`
 
 Creates a new session with a unique 6-character session code. Initial status is `lobby`.
 
-**Request Body**
-- None
-
 **Success Response**
 - Status: `201 Created`
-- Body:
 ```json
 {
-  "sessionId": 12,
   "sessionCode": "34ZRHE",
+  "hostUserId": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
   "status": "lobby",
   "gameState": {},
   "createdAt": "2026-03-16T10:00:00.000Z",
@@ -48,28 +52,16 @@ Creates a new session with a unique 6-character session code. Initial status is 
 
 ### GET `/api/sessions/:sessionCode`
 
-Fetches an existing session by session code. Used by the Lobby screen to load current lobby state and by the Game screen to load game state.
-
-**Path Parameters**
-- `sessionCode` (string): 6-character session code
-
 **Success Response**
 - Status: `200 OK`
-- Body:
 ```json
 {
-  "sessionId": 5,
   "sessionCode": "38V45J",
+  "hostUserId": "...",
   "status": "lobby",
   "gameState": {},
-  "createdAt": "2026-03-16T10:00:00.000Z",
-  "players": [
-    {
-      "playerId": 1,
-      "displayName": "Alice",
-      "joinedAt": "2026-03-16T10:05:00.000Z"
-    }
-  ]
+  "createdAt": "...",
+  "players": [...]
 }
 ```
 
@@ -79,11 +71,6 @@ Fetches an existing session by session code. Used by the Lobby screen to load cu
 
 ### POST `/api/sessions/:sessionCode/join`
 
-Adds a player to an existing session and returns the updated session.
-
-**Path Parameters**
-- `sessionCode` (string): 6-character session code
-
 **Request Body**
 ```json
 {
@@ -91,25 +78,27 @@ Adds a player to an existing session and returns the updated session.
 }
 ```
 
-**Success Response**
-- Status: `200 OK`
-- Body:
+---
+
+## Set Ready Status
+
+### POST `/api/sessions/:sessionCode/ready`
+
+**Request Body**
 ```json
 {
-  "sessionId": 8,
-  "sessionCode": "B94T6S",
-  "status": "lobby",
-  "gameState": {},
-  "createdAt": "2026-03-16T10:00:00.000Z",
-  "players": [
-    {
-      "playerId": 3,
-      "displayName": "Logan",
-      "joinedAt": "2026-03-16T10:10:00.000Z"
-    }
-  ]
+  "displayName": "Logan",
+  "isReady": true
 }
 ```
+
+---
+
+## Start Game (Host Only)
+
+### POST `/api/sessions/:sessionCode/start`
+
+Transitions session to `starting` status and notifies players via Socket.IO.
 
 ---
 
@@ -117,30 +106,9 @@ Adds a player to an existing session and returns the updated session.
 
 ### PATCH `/api/sessions/:sessionCode/status`
 
-Updates the session status (e.g., transition from `lobby` to `starting`).
-
-**Path Parameters**
-- `sessionCode` (string): 6-character session code
-
 **Request Body**
 ```json
 {
-  "status": "starting"
-}
-```
-
-- `status` (string, required): One of `lobby`, `starting`, `active`, `finished`.
-
-**Success Response**
-- Status: `200 OK`
-- Body:
-```json
-{
-  "sessionId": 8,
-  "sessionCode": "B94T6S",
-  "status": "starting",
-  "gameState": {},
-  "createdAt": "2026-03-16T10:00:00.000Z",
-  "players": [...]
+  "status": "active"
 }
 ```

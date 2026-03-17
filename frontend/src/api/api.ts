@@ -94,3 +94,29 @@ export async function searchUsers(query: string): Promise<UserSummary[]> {
   const data = await response.json();
   return data.results as UserSummary[];
 }
+
+export async function sendFriendRequest(receiverId: string): Promise<{ message: string }> {
+  const response = await fetch(`${BASE_URL}/api/users/friend-request`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ receiverId }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw new Error(body.error ?? 'Failed to send friend request');
+  }
+  return response.json() as Promise<{ message: string }>;
+}
+
+export async function getPendingFriendRequests(): Promise<UserSummary[]> {
+  const response = await fetch(`${BASE_URL}/api/users/friend-requests/pending`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw new Error(body.error ?? 'Failed to fetch pending requests');
+  }
+  const data = await response.json();
+  return data.results as UserSummary[];
+}

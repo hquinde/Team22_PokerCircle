@@ -216,8 +216,18 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const sessionCode = (req.params as { sessionCode: string }).sessionCode;
 
+    // 1. Fetch session + players in one query
     const result = await pool.query(
-      `SELECT host_user_id FROM game_sessions WHERE session_code = $1`,
+      `
+      SELECT
+        gs.host_user_id AS "hostUserId",
+        gs.status,
+        p.display_name  AS "displayName",
+        p.is_ready      AS "isReady"
+      FROM game_sessions gs
+      LEFT JOIN session_players p ON p.session_code = gs.session_code
+      WHERE gs.session_code = $1
+      `,
       [sessionCode]
     );
 
@@ -225,11 +235,37 @@ router.post(
       return res.status(404).json({ error: "Session not found" });
     }
 
-    if (result.rows[0].host_user_id !== req.session.userId) {
+    // 2. Host-only check
+    if (result.rows[0].hostUserId !== req.session.userId) {
       return res.status(403).json({ error: "Only the host can start the game" });
     }
 
-    // Placeholder — game start logic goes here in a future story
+    // 3. Build player list (filter out null row from LEFT JOIN when no players)
+    const players = result.rows.filter((r) => r.displayName !== null);
+
+    // 4. Minimum player count check
+    if (players.length < 2) {
+      return res.status(400).json({ error: "At least 2 players are required to start the game" });
+    }
+
+    // 5. All players must be ready
+    const notReady = players.filter((p) => !p.isReady);
+    if (notReady.length > 0) {
+      return res.status(400).json({
+        error: `Not all players are ready (${notReady.map((p) => p.displayName).join(", ")})`,
+      });
+    }
+
+    // 6. Update session status in DB
+    await pool.query(
+      `UPDATE game_sessions SET status = 'active' WHERE session_code = $1`,
+      [sessionCode]
+    );
+
+    // 7. Emit game:start to all clients in the room
+    const io: Server = req.app.get("io");
+    io.to(sessionCode).emit("game:start", { sessionCode });
+
     return res.status(200).json({ message: "Game started", sessionCode });
   })
 );

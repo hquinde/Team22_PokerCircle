@@ -9,3 +9,7 @@ export type LobbyUpdatePayload = {
   sessionCode: string;
   players: Player[];
 };
+
+export type GameStartPayload = {
+  sessionCode: string;
+};

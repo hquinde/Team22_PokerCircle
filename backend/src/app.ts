@@ -47,7 +47,7 @@ const sessionConfig: session.SessionOptions = {
 };
 
 if (process.env["NODE_ENV"] !== "test") {
-  sessionConfig.store = new PgStore({ pool, tableName: "session", createTableIfMissing: false });
+  sessionConfig.store = new PgStore({ pool, tableName: "session", createTableIfMissing: true });
 }
 
 app.use(session(sessionConfig));

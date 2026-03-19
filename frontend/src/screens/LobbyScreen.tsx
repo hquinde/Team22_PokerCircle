@@ -20,7 +20,7 @@ type GameStartPayload = {
 };
 
 export default function LobbyScreen({ route, navigation }: Props) {
-  const { sessionCode, devPlayerName } = route.params;
+  const { sessionCode } = route.params;
   const [players, setPlayers] = useState<Player[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
@@ -93,25 +93,18 @@ export default function LobbyScreen({ route, navigation }: Props) {
         let playerName: string;
         let myUserId: string | null = null;
 
-        // Attempt auth fetch always
         const authRes = await fetch(`${BACKEND_URL}/api/auth/me`, {
           credentials: 'include',
         });
 
-        if (authRes.ok) {
-          const authData = (await authRes.json()) as { userID: string; username: string };
-          myUserId = authData.userID;
-          // Only use auth username when not in dev mode
-          playerName = devPlayerName !== undefined ? devPlayerName : authData.username;
-        } else {
-          // Auth failed — fatal in production, graceful in dev mode
-          if (devPlayerName === undefined) {
-            if (active) setError('Not authenticated. Please log in again.');
-            return;
-          }
-          // Dev mode: no cookie, continue without userId (isHost stays false)
-          playerName = devPlayerName;
+        if (!authRes.ok) {
+          if (active) setError('Not authenticated. Please log in again.');
+          return;
         }
+
+        const authData = (await authRes.json()) as { userID: string; username: string };
+        myUserId = authData.userID;
+        playerName = authData.username;
 
         if (!active) return;
         resolvedPlayerNameRef.current = playerName;
@@ -152,7 +145,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
       socket.off('connect_error', handleConnectError);
       socket.disconnect();
     };
-  }, [sessionCode, devPlayerName, navigation]);
+  }, [sessionCode, navigation]);
 
   useEffect(() => {
     if (!statusMessage) return;

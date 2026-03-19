@@ -16,14 +16,14 @@ class UserModel {
 
   async save(): Promise<void> {
     await pool.query(
-      'INSERT INTO users ("userID", username, email, password) VALUES ($1, $2, $3, $4)',
+      'INSERT INTO users (user_id, username, email, password_hash) VALUES ($1, $2, $3, $4)',
       [this.userID, this.username, this.email, this.password],
     );
   }
 
   static async findById(userID: string): Promise<UserModel | null> {
     const result = await pool.query<User>(
-      'SELECT "userID", username, email, password FROM users WHERE "userID" = $1',
+      'SELECT user_id AS "userID", username, email, password_hash AS password FROM users WHERE user_id = $1',
       [userID],
     );
     const row = result.rows[0];
@@ -33,7 +33,7 @@ class UserModel {
 
   static async findByEmail(email: string): Promise<UserModel | null> {
     const result = await pool.query<User>(
-      'SELECT "userID", username, email, password FROM users WHERE email = $1',
+      'SELECT user_id AS "userID", username, email, password_hash AS password FROM users WHERE email = $1',
       [email],
     );
     const row = result.rows[0];

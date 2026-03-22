@@ -14,15 +14,19 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const httpServer = http.createServer(app);
 
 // Attach Socket.IO (also set on app so route handlers can emit events)
+const rawOrigins = process.env["WEB_ORIGIN"] ?? "http://localhost:8081";
+const allowedOrigins = rawOrigins.split(",").map((o) => o.trim());
+
 const io = new Server(httpServer, {
-  cors:
-    process.env.NODE_ENV !== "production"
-      ? {
-          origin: process.env.WEB_ORIGIN ?? 'http://localhost:8081',
-          credentials: true,
-          methods: ['GET', 'POST'],
-        }
-      : { origin: false },
+  cors: {
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`Socket.IO CORS: origin '${origin}' not allowed`));
+    },
+    credentials: true,
+    methods: ["GET", "POST"],
+  },
 });
 
 app.set('io', io);

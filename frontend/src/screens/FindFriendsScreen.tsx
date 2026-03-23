@@ -13,20 +13,21 @@ import {
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { colors } from '../theme/colors';
+import {
+  searchUsers,
+  sendFriendRequest,
+  respondToFriendRequest,
+} from '../api/api';
+import type { UserSearchResult } from '../api/api';
 
 type Props = StackScreenProps<RootStackParamList, 'FindFriends'>;
-
-type User = {
-  id: number;
-  username: string;
-};
 
 export default function FindFriendsScreen(_props: Props) {
   const [query, setQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<User[]>([]);
-  const [sentRequests, setSentRequests] = useState<number[]>([]);
+  const [results, setResults] = useState<UserSearchResult[]>([]);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const trimmed = useMemo(() => query.trim(), [query]);
   const canSearch = trimmed.length > 0;
@@ -40,23 +41,77 @@ export default function FindFriendsScreen(_props: Props) {
 
     setHasSearched(true);
     setLoading(true);
+    setAddError(null);
 
     try {
-      await new Promise((r) => setTimeout(r, 450));
-
-      setResults([
-        { id: 101, username: `${trimmed}_player1` },
-        { id: 102, username: `${trimmed}_player2` },
-        { id: 103, username: `${trimmed}_player3` },
-      ]);
+      const users = await searchUsers(trimmed);
+      setResults(users);
+    } catch {
+      setResults([]);
     } finally {
       setLoading(false);
     }
   }
 
-  function handleAddFriend(friendId: number) {
-    if (sentRequests.includes(friendId)) return;
-    setSentRequests((prev) => [...prev, friendId]);
+  async function handleAddFriend(userId: string) {
+    try {
+      await sendFriendRequest(userId);
+      setResults((prev) =>
+        prev.map((u) =>
+          u.userId === userId ? { ...u, friendshipStatus: 'pending_sent' } : u
+        )
+      );
+    } catch (err: unknown) {
+      setAddError(err instanceof Error ? err.message : 'Failed to send friend request');
+    }
+  }
+
+  async function handleAcceptRequest(userId: string, requestId: number) {
+    try {
+      await respondToFriendRequest(requestId, 'accept');
+      setResults((prev) =>
+        prev.map((u) =>
+          u.userId === userId ? { ...u, friendshipStatus: 'accepted' } : u
+        )
+      );
+    } catch (err: unknown) {
+      setAddError(err instanceof Error ? err.message : 'Failed to accept friend request');
+    }
+  }
+
+  function renderActionButton(item: UserSearchResult) {
+    switch (item.friendshipStatus) {
+      case 'none':
+        return (
+          <Pressable
+            style={({ pressed }) => [styles.addButton, pressed && styles.buttonPressed]}
+            onPress={() => handleAddFriend(item.userId)}
+          >
+            <Text style={styles.addButtonText}>Add Friend</Text>
+          </Pressable>
+        );
+      case 'pending_sent':
+        return (
+          <Pressable style={[styles.addButton, styles.addButtonDisabled]} disabled>
+            <Text style={styles.addButtonText}>Request Sent</Text>
+          </Pressable>
+        );
+      case 'pending_received':
+        return (
+          <Pressable
+            style={({ pressed }) => [styles.addButton, pressed && styles.buttonPressed]}
+            onPress={() => handleAcceptRequest(item.userId, item.friendshipId ?? 0)}
+          >
+            <Text style={styles.addButtonText}>Accept</Text>
+          </Pressable>
+        );
+      case 'accepted':
+        return (
+          <Pressable style={[styles.addButton, styles.addButtonDisabled]} disabled>
+            <Text style={styles.addButtonText}>Already Friends</Text>
+          </Pressable>
+        );
+    }
   }
 
   return (
@@ -91,6 +146,10 @@ export default function FindFriendsScreen(_props: Props) {
           <Text style={styles.buttonText}>Search</Text>
         </Pressable>
 
+        {addError !== null && (
+          <Text style={styles.errorText}>{addError}</Text>
+        )}
+
         {loading && (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={colors.primary} />
@@ -104,31 +163,14 @@ export default function FindFriendsScreen(_props: Props) {
 
         <FlatList
           data={results}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.userId}
           contentContainerStyle={{ paddingBottom: 20 }}
-          renderItem={({ item }) => {
-            const sent = sentRequests.includes(item.id);
-
-            return (
-              <View style={styles.resultRow}>
-                <Text style={styles.username}>{item.username}</Text>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.addButton,
-                    sent && styles.addButtonDisabled,
-                    pressed && !sent && styles.buttonPressed,
-                  ]}
-                  onPress={() => handleAddFriend(item.id)}
-                  disabled={sent}
-                >
-                  <Text style={styles.addButtonText}>
-                    {sent ? 'Request Sent' : 'Add Friend'}
-                  </Text>
-                </Pressable>
-              </View>
-            );
-          }}
+          renderItem={({ item }) => (
+            <View style={styles.resultRow}>
+              <Text style={styles.username}>{item.username}</Text>
+              {renderActionButton(item)}
+            </View>
+          )}
         />
       </View>
     </SafeAreaView>
@@ -195,6 +237,12 @@ const styles = StyleSheet.create({
     color: colors.textOnPrimary,
     fontSize: 18,
     fontWeight: '700',
+  },
+
+  errorText: {
+    color: colors.primary,
+    fontSize: 13,
+    marginBottom: 8,
   },
 
   loadingRow: {

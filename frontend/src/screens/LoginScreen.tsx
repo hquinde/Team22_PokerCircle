@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, TextInput, Pressable, Alert, ActivityIndicator 
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { colors } from '../theme/colors';
+import { BACKEND_URL } from '../config/api';
 
 type Props = StackScreenProps<RootStackParamList, 'Login'>;
 
@@ -19,19 +20,18 @@ export default function LoginScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3000/api/auth/login', {
+      const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        Alert.alert('Success', 'Logged in successfully');
-        // In a real app, store the token and update auth state
         navigation.replace('Home');
       } else {
         Alert.alert('Error', data.error || 'Login failed');
@@ -44,10 +44,35 @@ export default function LoginScreen({ navigation }: Props) {
     }
   };
 
+  const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: demoEmail, password: demoPassword }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        navigation.replace('Home');
+      } else {
+        Alert.alert('Error', data.error ?? data.message ?? 'Demo login failed. Run npm run seed first.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Could not connect to server');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
-      
+
       <TextInput
         style={styles.input}
         placeholder="Email"
@@ -78,6 +103,24 @@ export default function LoginScreen({ navigation }: Props) {
           <Text style={styles.buttonText}>Login</Text>
         )}
       </Pressable>
+
+      <View style={styles.demoSection}>
+        <Text style={styles.demoLabel}>Quick Login (Testing)</Text>
+        <Pressable
+          style={({ pressed }) => [styles.demoButton, pressed && styles.buttonPressed]}
+          onPress={() => handleDemoLogin('demo1@pokercircle.dev', '000000')}
+          disabled={loading}
+        >
+          <Text style={styles.demoButtonText}>Login as Demo 1</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [styles.demoButton, pressed && styles.buttonPressed]}
+          onPress={() => handleDemoLogin('demo2@pokercircle.dev', '000000')}
+          disabled={loading}
+        >
+          <Text style={styles.demoButtonText}>Login as Demo 2</Text>
+        </Pressable>
+      </View>
 
       <Pressable onPress={() => navigation.navigate('Signup')} style={styles.link}>
         <Text style={styles.linkText}>Don't have an account? Sign Up</Text>
@@ -123,6 +166,32 @@ const styles = StyleSheet.create({
     color: colors.textOnPrimary,
     fontSize: 18,
     fontWeight: '600',
+  },
+  demoSection: {
+    marginTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: colors.inputBorder,
+    paddingTop: 16,
+    gap: 10,
+  },
+  demoLabel: {
+    color: colors.placeholder,
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  demoButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    padding: 13,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  demoButtonText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '500',
   },
   link: {
     marginTop: 20,

@@ -1,6 +1,5 @@
 import io from 'socket.io-client';
-
-const BACKEND_URL = 'http://localhost:3000';
+import { BACKEND_URL } from '../config/api';
 
 export const socket = io(BACKEND_URL, {
   autoConnect: false,
@@ -8,6 +7,7 @@ export const socket = io(BACKEND_URL, {
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
   timeout: 10000,
+  withCredentials: true,
 });
 
 socket.on('connect', () => {

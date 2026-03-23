@@ -4,7 +4,9 @@ import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import type { Player } from '../types/session';
 import { socket } from '../services/socket';
+import { getSession } from '../api/api';
 import { colors } from '../theme/colors';
+import { BACKEND_URL } from '../config/api';
 
 type Props = StackScreenProps<RootStackParamList, 'Lobby'>;
 
@@ -13,26 +15,28 @@ type LobbyUpdatePayload = {
   players: Player[];
 };
 
-const BACKEND_URL = 'http://localhost:3000';
+type GameStartPayload = {
+  sessionCode: string;
+};
 
 export default function LobbyScreen({ route, navigation }: Props) {
-  const { sessionCode, devPlayerName } = route.params;
+  const { sessionCode } = route.params;
   const [players, setPlayers] = useState<Player[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(true);
+  const [isStarting, setIsStarting] = useState(false);
   const [joinMessage, setJoinMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [isHost, setIsHost] = useState(false);
   const previousPlayersRef = useRef<Player[]>([]);
+  const resolvedPlayerNameRef = useRef('');
 
   useEffect(() => {
     let active = true;
-    let resolvedPlayerName = '';
 
     const handleLobbyUpdate = (payload: LobbyUpdatePayload) => {
       if (!active) return;
-
-      console.log('Received lobby:update', payload);
-
       const previousPlayers = previousPlayersRef.current;
       const currentPlayers = payload.players;
 
@@ -50,78 +54,78 @@ export default function LobbyScreen({ route, navigation }: Props) {
       setIsJoining(false);
     };
 
+    const handleGameStart = (payload: GameStartPayload) => {
+      if (!active) return;
+      navigation.replace('Game', { sessionCode: payload.sessionCode });
+    };
+
     const handleSocketError = (payload: { message: string }) => {
       if (!active) return;
-      console.log('Socket error received', payload);
       setError(payload.message);
       setIsJoining(false);
     };
 
     const handleConnectError = (err: any) => {
       if (!active) return;
-      console.log('Socket connect_error in LobbyScreen', err?.message);
       setError('Could not connect to lobby server.');
       setIsJoining(false);
     };
 
     const handleReconnect = () => {
-      if (!active || !resolvedPlayerName) return;
-
-      console.log('Reconnected — rejoining session');
+      if (!active || !resolvedPlayerNameRef.current) return;
       setStatusMessage('Reconnected to lobby.');
-
       socket.emit('session:joinRoom', {
         sessionCode,
-        playerName: resolvedPlayerName,
+        playerName: resolvedPlayerNameRef.current,
       });
     };
 
     const handleConnect = () => {
-      if (!active || !resolvedPlayerName) return;
-
-      console.log('Socket connected in LobbyScreen, joining room', {
-        sessionCode,
-        playerName: resolvedPlayerName,
-      });
-
+      if (!active || !resolvedPlayerNameRef.current) return;
       socket.emit('session:joinRoom', {
         sessionCode,
-        playerName: resolvedPlayerName,
+        playerName: resolvedPlayerNameRef.current,
       });
     };
 
     async function init() {
       try {
-        if (devPlayerName !== undefined) {
-          resolvedPlayerName = devPlayerName;
-        } else {
-          const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
-            credentials: 'include',
-          });
+        let playerName: string;
+        let myUserId: string | null = null;
 
-          if (!res.ok) {
-            if (active) {
-              setError('Not authenticated. Please log in again.');
-              setIsJoining(false);
-            }
-            return;
-          }
+        const authRes = await fetch(`${BACKEND_URL}/api/auth/me`, {
+          credentials: 'include',
+        });
 
-          const data = (await res.json()) as { username: string };
-          if (!active) return;
-          resolvedPlayerName = data.username;
+        if (!authRes.ok) {
+          if (active) setError('Not authenticated. Please log in again.');
+          return;
+        }
+
+        const authData = (await authRes.json()) as { userID: string; username: string };
+        myUserId = authData.userID;
+        playerName = authData.username;
+
+        if (!active) return;
+        resolvedPlayerNameRef.current = playerName;
+
+        // Fetch session to determine host
+        try {
+          const session = await getSession(sessionCode);
+          if (active) setIsHost(session.hostUserId === myUserId);
+        } catch (err) {
+          console.error('LobbyScreen: Error fetching session:', err);
         }
 
         socket.on('lobby:update', handleLobbyUpdate);
+        socket.on('game:start', handleGameStart);
         socket.on('error', handleSocketError);
         socket.on('reconnect', handleReconnect);
         socket.on('connect', handleConnect);
         socket.on('connect_error', handleConnectError);
 
-        console.log('About to connect socket');
         socket.connect();
       } catch (err) {
-        console.error('Lobby init error', err);
         if (active) {
           setError('Could not connect to server.');
           setIsJoining(false);
@@ -134,23 +138,70 @@ export default function LobbyScreen({ route, navigation }: Props) {
     return () => {
       active = false;
       socket.off('lobby:update', handleLobbyUpdate);
+      socket.off('game:start', handleGameStart);
       socket.off('error', handleSocketError);
       socket.off('reconnect', handleReconnect);
       socket.off('connect', handleConnect);
       socket.off('connect_error', handleConnectError);
       socket.disconnect();
     };
-  }, [sessionCode, devPlayerName]);
+  }, [sessionCode, navigation]);
 
   useEffect(() => {
     if (!statusMessage) return;
-
-    const timer = setTimeout(() => {
-      setStatusMessage(null);
-    }, 2500);
-
+    const timer = setTimeout(() => setStatusMessage(null), 2500);
     return () => clearTimeout(timer);
   }, [statusMessage]);
+
+  async function handleReadyToggle() {
+    const myPlayerName = resolvedPlayerNameRef.current;
+    if (!myPlayerName) return;
+    const myIsReady = players.find(p => p.name === myPlayerName)?.isReady ?? false;
+    const next = !myIsReady;
+    try {
+      const res = await fetch(
+        `${BACKEND_URL}/api/sessions/${sessionCode}/ready`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ displayName: myPlayerName, isReady: next }),
+        }
+      );
+      if (!res.ok) {
+        const body = (await res.json()) as { error?: string };
+        setError(body.error ?? 'Failed to update ready status.');
+      }
+    } catch {
+      setError('Could not reach server.');
+    }
+  }
+
+  useEffect(() => {
+    if (!startError) return;
+    const timer = setTimeout(() => setStartError(null), 4000);
+    return () => clearTimeout(timer);
+  }, [startError]);
+
+  const handleStartGame = async () => {
+    setIsStarting(true);
+    setStartError(null);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/sessions/${sessionCode}/start`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const data = await res.json() as { error: string };
+        setStartError(data.error ?? 'Failed to start game.');
+      }
+      // On success, the game:start socket event will trigger navigation
+    } catch {
+      setStartError('Could not reach the server. Please try again.');
+    } finally {
+      setIsStarting(false);
+    }
+  };
 
   if (error) {
     return (
@@ -164,6 +215,8 @@ export default function LobbyScreen({ route, navigation }: Props) {
       </SafeAreaView>
     );
   }
+
+  const allReady = players.length >= 2 && players.every((p) => p.isReady);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -192,6 +245,12 @@ export default function LobbyScreen({ route, navigation }: Props) {
         </View>
       )}
 
+      {startError && (
+        <View style={styles.startErrorBox}>
+          <Text style={styles.startErrorText}>{startError}</Text>
+        </View>
+      )}
+
       <FlatList
         data={players}
         keyExtractor={(item) => item.playerId}
@@ -201,6 +260,9 @@ export default function LobbyScreen({ route, navigation }: Props) {
               <Text style={styles.playerName}>{item.name}</Text>
               <Text style={styles.playerLabel}>Player {index + 1}</Text>
             </View>
+            <Text style={item.isReady ? styles.readyBadge : styles.notReadyBadge}>
+              {item.isReady ? 'Ready' : 'Not Ready'}
+            </Text>
           </View>
         )}
         contentContainerStyle={styles.listContent}
@@ -211,138 +273,82 @@ export default function LobbyScreen({ route, navigation }: Props) {
           </View>
         }
       />
+
+      {isHost && (
+        <View style={styles.startButtonContainer}>
+          {!allReady && (
+            <Text style={styles.waitingText}>
+              {players.length < 2
+                ? 'Waiting for at least 2 players...'
+                : 'Waiting for all players to ready up...'}
+            </Text>
+          )}
+          <Pressable
+            style={[styles.startButton, (!allReady || isStarting) && styles.startButtonDisabled]}
+            onPress={handleStartGame}
+            disabled={!allReady || isStarting}
+          >
+            <Text style={styles.startButtonText}>
+              {isStarting ? 'Starting...' : 'Start Game'}
+            </Text>
+          </Pressable>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 16,
-  },
-  sessionCode: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: colors.primary,
-    letterSpacing: 8,
-  },
-  playerCount: {
-    fontSize: 16,
-    color: colors.text,
-    marginTop: 8,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+  header: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 16 },
+  sessionCode: { fontSize: 48, fontWeight: 'bold', color: colors.primary, letterSpacing: 8 },
+  playerCount: { fontSize: 16, color: colors.text, marginTop: 8 },
   infoBox: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    backgroundColor: colors.inputBackground,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
+    marginHorizontal: 16, marginBottom: 12, paddingVertical: 10, paddingHorizontal: 14,
+    borderRadius: 8, backgroundColor: colors.inputBackground, borderWidth: 1, borderColor: colors.inputBorder,
   },
-  infoText: {
-    color: colors.text,
-    fontSize: 14,
-    textAlign: 'center',
-  },
+  infoText: { color: colors.text, fontSize: 14, textAlign: 'center' },
   successBox: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    backgroundColor: colors.inputBackground,
-    borderWidth: 1,
-    borderColor: colors.primary,
+    marginHorizontal: 16, marginBottom: 12, paddingVertical: 10, paddingHorizontal: 14,
+    borderRadius: 8, backgroundColor: colors.inputBackground, borderWidth: 1, borderColor: colors.primary,
   },
-  successText: {
-    color: colors.primary,
-    fontSize: 14,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
+  successText: { color: colors.primary, fontSize: 14, textAlign: 'center', fontWeight: '600' },
   statusBox: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    backgroundColor: colors.inputBackground,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
+    marginHorizontal: 16, marginBottom: 12, paddingVertical: 10, paddingHorizontal: 14,
+    borderRadius: 8, backgroundColor: colors.inputBackground, borderWidth: 1, borderColor: colors.inputBorder,
   },
-  statusText: {
-    color: colors.text,
-    fontSize: 14,
-    textAlign: 'center',
+  statusText: { color: colors.text, fontSize: 14, textAlign: 'center' },
+  startErrorBox: {
+    marginHorizontal: 16, marginBottom: 12, paddingVertical: 10, paddingHorizontal: 14,
+    borderRadius: 8, backgroundColor: '#2a1a1a', borderWidth: 1, borderColor: '#cc4444',
   },
-  listContent: {
-    paddingHorizontal: 16,
-    flexGrow: 1,
-  },
+  startErrorText: { color: '#ff6b6b', fontSize: 14, textAlign: 'center', fontWeight: '600' },
+  listContent: { paddingHorizontal: 16, flexGrow: 1 },
   playerRow: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: colors.inputBackground,
-    borderRadius: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
+    paddingVertical: 14, paddingHorizontal: 16, backgroundColor: colors.inputBackground,
+    borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: colors.inputBorder,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
   },
-  playerName: {
-    fontSize: 16,
-    color: colors.text,
-    fontWeight: '600',
-  },
-  playerLabel: {
-    marginTop: 4,
-    fontSize: 12,
-    color: colors.placeholder,
-  },
-  emptyState: {
-    marginTop: 48,
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: 8,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: colors.placeholder,
-    fontSize: 16,
-  },
-  errorContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-  },
-  errorText: {
-    color: colors.primary,
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
+  playerName: { fontSize: 16, color: colors.text, fontWeight: '600' },
+  playerLabel: { marginTop: 4, fontSize: 12, color: colors.placeholder },
+  readyBadge: { fontSize: 12, fontWeight: '600', color: colors.primary },
+  notReadyBadge: { fontSize: 12, fontWeight: '600', color: colors.placeholder },
+  emptyState: { marginTop: 48, alignItems: 'center', paddingHorizontal: 24 },
+  emptyTitle: { fontSize: 18, fontWeight: '600', color: colors.text, marginBottom: 8 },
+  emptyText: { textAlign: 'center', color: colors.placeholder, fontSize: 16 },
+  errorContent: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  errorText: { color: colors.primary, fontSize: 16, textAlign: 'center', marginBottom: 24 },
   button: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
+    backgroundColor: colors.primary, borderRadius: 8, paddingVertical: 14,
+    paddingHorizontal: 32, alignItems: 'center',
+  },
+  buttonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
+  startButtonContainer: { padding: 16, paddingBottom: 24 },
+  waitingText: { textAlign: 'center', color: colors.placeholder, fontSize: 13, marginBottom: 8 },
+  startButton: {
+    backgroundColor: colors.primary, borderRadius: 8, paddingVertical: 16,
     alignItems: 'center',
   },
-  buttonText: {
-    color: colors.textOnPrimary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  startButtonDisabled: { opacity: 0.4 },
+  startButtonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '700' },
 });

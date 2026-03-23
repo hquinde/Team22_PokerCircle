@@ -5,7 +5,27 @@ const initDb = async () => {
   const client = await pool.connect();
 
   try {
+    console.log("Dropping existing tables...");
+
+    await client.query(`
+      DROP TABLE IF EXISTS session_players CASCADE;
+      DROP TABLE IF EXISTS game_sessions CASCADE;
+      DROP TABLE IF EXISTS users CASCADE;
+      DROP TABLE IF EXISTS session CASCADE;
+    `);
+
     console.log("Creating tables...");
+
+    // Session store (connect-pg-simple)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS session (
+        sid     VARCHAR NOT NULL COLLATE "default",
+        sess    JSON    NOT NULL,
+        expire  TIMESTAMP(6) NOT NULL,
+        CONSTRAINT session_pkey PRIMARY KEY (sid) NOT DEFERRABLE INITIALLY IMMEDIATE
+      ) WITH (OIDS=FALSE);
+      CREATE INDEX IF NOT EXISTS IDX_session_expire ON session (expire);
+    `);
 
     // Users table
     await client.query(`
@@ -34,32 +54,26 @@ const initDb = async () => {
       );
     `);
 
-    // Lobby sessions (NOT express-session "session" table)
+    // Game sessions
     await client.query(`
       CREATE TABLE IF NOT EXISTS game_sessions (
-        session_code VARCHAR(6) PRIMARY KEY,
-        host_user_id UUID NOT NULL REFERENCES users(user_id),
-        status VARCHAR(20) NOT NULL DEFAULT 'lobby',
+        session_code TEXT PRIMARY KEY,
+        host_user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'waiting',
         game_state JSONB DEFAULT '{}'::jsonb,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
 
-    // Players in a lobby
+    // Players in a session
     await client.query(`
       CREATE TABLE IF NOT EXISTS session_players (
         id SERIAL PRIMARY KEY,
-        session_code VARCHAR(6) NOT NULL,
+        session_code TEXT NOT NULL REFERENCES game_sessions(session_code) ON DELETE CASCADE,
         display_name TEXT NOT NULL,
         is_ready BOOLEAN NOT NULL DEFAULT FALSE,
         joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-        CONSTRAINT fk_session_players_session
-          FOREIGN KEY (session_code)
-          REFERENCES game_sessions(session_code)
-          ON DELETE CASCADE,
-
-        CONSTRAINT unique_player_name_per_session UNIQUE (session_code, display_name)
+        CONSTRAINT unique_player_per_session UNIQUE (session_code, display_name)
       );
     `);
 
@@ -69,7 +83,7 @@ const initDb = async () => {
     process.exitCode = 1;
   } finally {
     client.release();
-    await pool.end(); // optional but helps scripts exit cleanly
+    await pool.end();
   }
 };
 

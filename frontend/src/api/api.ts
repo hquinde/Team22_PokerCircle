@@ -1,8 +1,5 @@
 import type { Session, SessionStatus } from '../types/session';
-
-// In a real app, this might come from an environment variable.
-// For local Expo development, you might need to use your machine's IP (e.g. 192.168.x.x:3000)
-const BASE_URL = 'http://localhost:3000';
+import { BACKEND_URL } from '../config/api';
 
 export type UserSummary = {
   id: string;
@@ -10,7 +7,9 @@ export type UserSummary = {
 };
 
 export async function getSession(sessionCode: string): Promise<Session> {
-  const response = await fetch(`${BASE_URL}/api/sessions/${sessionCode}`);
+  const response = await fetch(`${BACKEND_URL}/api/sessions/${sessionCode}`, {
+    credentials: 'include',
+  });
   if (response.status === 404) {
     throw Object.assign(new Error('Session not found'), { statusCode: 404 });
   }
@@ -21,7 +20,7 @@ export async function getSession(sessionCode: string): Promise<Session> {
 }
 
 export async function createSession(): Promise<Session> {
-  const response = await fetch(`${BASE_URL}/api/sessions`, {
+  const response = await fetch(`${BACKEND_URL}/api/sessions`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -34,7 +33,7 @@ export async function createSession(): Promise<Session> {
 }
 
 export async function joinSession(sessionCode: string, displayName: string): Promise<Session> {
-  const response = await fetch(`${BASE_URL}/api/sessions/${sessionCode}/join`, {
+  const response = await fetch(`${BACKEND_URL}/api/sessions/${sessionCode}/join`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ displayName }),
@@ -47,7 +46,7 @@ export async function joinSession(sessionCode: string, displayName: string): Pro
 }
 
 export async function readySession(sessionCode: string, displayName: string, isReady: boolean): Promise<any> {
-  const response = await fetch(`${BASE_URL}/api/sessions/${sessionCode}/ready`, {
+  const response = await fetch(`${BACKEND_URL}/api/sessions/${sessionCode}/ready`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ displayName, isReady }),
@@ -60,7 +59,7 @@ export async function readySession(sessionCode: string, displayName: string, isR
 }
 
 export async function startSession(sessionCode: string): Promise<Session> {
-  const response = await fetch(`${BASE_URL}/api/sessions/${sessionCode}/start`, {
+  const response = await fetch(`${BACKEND_URL}/api/sessions/${sessionCode}/start`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -73,7 +72,7 @@ export async function startSession(sessionCode: string): Promise<Session> {
 }
 
 export async function updateSessionStatus(sessionCode: string, status: SessionStatus): Promise<Session> {
-  const response = await fetch(`${BASE_URL}/api/sessions/${sessionCode}/status`, {
+  const response = await fetch(`${BACKEND_URL}/api/sessions/${sessionCode}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status }),
@@ -86,7 +85,7 @@ export async function updateSessionStatus(sessionCode: string, status: SessionSt
 }
 
 export async function searchUsers(query: string): Promise<UserSummary[]> {
-  const response = await fetch(`${BASE_URL}/api/users/search?q=${encodeURIComponent(query)}`);
+  const response = await fetch(`${BACKEND_URL}/api/users/search?q=${encodeURIComponent(query)}`);
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || 'Failed to search users');
@@ -96,7 +95,7 @@ export async function searchUsers(query: string): Promise<UserSummary[]> {
 }
 
 export async function sendFriendRequest(receiverId: string): Promise<{ message: string }> {
-  const response = await fetch(`${BASE_URL}/api/users/friend-request`, {
+  const response = await fetch(`${BACKEND_URL}/api/users/friend-request`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -110,7 +109,7 @@ export async function sendFriendRequest(receiverId: string): Promise<{ message: 
 }
 
 export async function getPendingFriendRequests(): Promise<UserSummary[]> {
-  const response = await fetch(`${BASE_URL}/api/users/friend-requests/pending`, {
+  const response = await fetch(`${BACKEND_URL}/api/users/friend-requests/pending`, {
     credentials: 'include',
   });
   if (!response.ok) {

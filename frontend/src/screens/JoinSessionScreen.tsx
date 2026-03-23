@@ -6,13 +6,11 @@ import { colors } from '../theme/colors';
 
 type Props = StackScreenProps<RootStackParamList, 'JoinSession'>;
 
-export default function JoinSessionScreen({ navigation, route }: Props) {
+export default function JoinSessionScreen({ navigation }: Props) {
   const [sessionCode, setSessionCode] = useState('');
-  const [playerName, setPlayerName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const devMode = route.params?.devMode;
 
-  const isValid = sessionCode.length === 6 && (!devMode || playerName.trim().length > 0);
+  const isValid = sessionCode.length === 6;
 
   function handleChangeText(text: string) {
     setSessionCode(text.replace(/\s/g, '').toUpperCase());
@@ -23,30 +21,13 @@ export default function JoinSessionScreen({ navigation, route }: Props) {
 
     setIsSubmitting(true);
 
-    navigation.navigate('Lobby', {
-      sessionCode,
-      ...(devMode ? { devPlayerName: playerName.trim() } : {}),
-    });
+    navigation.navigate('Lobby', { sessionCode });
   }
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>Join Session</Text>
-
-        {devMode && (
-          <>
-            <Text style={styles.label}>Your name</Text>
-            <TextInput
-              style={styles.input}
-              value={playerName}
-              onChangeText={setPlayerName}
-              autoCorrect={false}
-              placeholder="Enter your name"
-              placeholderTextColor={colors.placeholder}
-            />
-          </>
-        )}
 
         <Text style={styles.label}>Enter 6-character session code</Text>
 

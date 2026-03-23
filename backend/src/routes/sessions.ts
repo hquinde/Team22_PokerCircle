@@ -149,15 +149,30 @@ router.post(
       return res.status(404).json({ error: "Session not found" });
     }
 
+    // 2. Host-only check
     if (session.hostUserId !== req.session.userId) {
       return res.status(403).json({ error: "Only the host can start the game" });
     }
 
-    // Transition to 'starting' or 'active'
-    const updatedSession = await updateSessionStatus(sessionCode, "starting");
-    
+    // 4. Minimum player count check
+    if (session.players.length < 2) {
+      return res.status(400).json({ error: "At least 2 players are required to start the game" });
+    }
+
+    // 5. All players must be ready
+    const notReady = session.players.filter((p) => !p.isReady);
+    if (notReady.length > 0) {
+      return res.status(400).json({
+        error: `Not all players are ready (${notReady.map((p) => p.displayName).join(", ")})`,
+      });
+    }
+
+    // 6. Update session status in DB
+    const updatedSession = await updateSessionStatus(sessionCode, "active");
+
+    // 7. Emit game:start to all clients in the room
     const io: Server = req.app.get("io");
-    io.to(sessionCode).emit("game:starting", { sessionCode });
+    io.to(sessionCode).emit("game:start", { sessionCode });
 
     return res.status(200).json(updatedSession);
   })
@@ -172,7 +187,7 @@ router.patch(
     const sessionCode = req.params.sessionCode;
     const { status } = req.body as { status?: string };
 
-    const validStatuses = ["lobby", "starting", "active", "finished"];
+    const validStatuses = ["waiting", "starting", "active", "finished"];
     if (!status || !validStatuses.includes(status)) {
       return res.status(400).json({
         error: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,

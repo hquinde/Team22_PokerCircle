@@ -1,11 +1,11 @@
 export type User = {
-  user_id: string;
+  userID: string;
   username: string;
   email: string;
-  password_hash: string;
-  total_balance: number;
-  created_at: string;
-  updated_at: string;
+  password?: string;
+  total_balance?: number;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type UserSummary = {

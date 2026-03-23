@@ -1,0 +1,1 @@
+export const BACKEND_URL = 'https://team22pokercircle-production.up.railway.app';

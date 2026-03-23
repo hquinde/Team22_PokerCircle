@@ -59,6 +59,9 @@ CREATE TABLE IF NOT EXISTS session_players (
   session_code VARCHAR(6) NOT NULL REFERENCES game_sessions(session_code) ON DELETE CASCADE,
   display_name TEXT NOT NULL,
   is_ready BOOLEAN NOT NULL DEFAULT FALSE,
+  buy_in INTEGER DEFAULT 0,
+  rebuy_total INTEGER DEFAULT 0,
+  cash_out INTEGER DEFAULT 0,
   joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT unique_player_name_per_session UNIQUE (session_code, display_name)
 );

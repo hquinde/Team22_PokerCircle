@@ -10,6 +10,7 @@ import {
   addPlayerToSession,
   updateSessionStatus,
   updatePlayerReady,
+  updatePlayerFinances,
 } from "../store/sessionDbStore";
 
 const router = Router();
@@ -175,6 +176,86 @@ router.post(
     io.to(sessionCode).emit("game:start", { sessionCode });
 
     return res.status(200).json(updatedSession);
+  })
+);
+
+/**
+ * Update player financial data (buy-in, rebuys, cash-out)
+ */
+router.patch(
+  "/:sessionCode/players/:displayName/finances",
+  asyncHandler(async (req: Request, res: Response) => {
+    const { sessionCode, displayName } = req.params;
+    const { buyIn, rebuyTotal, cashOut } = req.body as {
+      buyIn?: number;
+      rebuyTotal?: number;
+      cashOut?: number;
+    };
+
+    const success = await updatePlayerFinances(sessionCode, displayName, {
+      buyIn,
+      rebuyTotal,
+      cashOut,
+    });
+
+    if (!success) {
+      return res.status(404).json({ error: "Player or session not found" });
+    }
+
+    return res.status(200).json({ message: "Player finances updated", sessionCode, displayName });
+  })
+);
+
+/**
+ * Complete the session and finalize results
+ */
+router.post(
+  "/:sessionCode/complete",
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { sessionCode } = req.params;
+    const session = await getSessionWithPlayers(sessionCode);
+
+    if (!session) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    if (session.hostUserId !== req.session.userId) {
+      return res.status(403).json({ error: "Only the host can complete the session" });
+    }
+
+    // Transition status to 'finished'
+    const updatedSession = await updateSessionStatus(sessionCode, "finished");
+
+    // Emit game:complete to all clients
+    const io: Server = req.app.get("io");
+    io.to(sessionCode).emit("game:complete", { sessionCode });
+
+    return res.status(200).json(updatedSession);
+  })
+);
+
+/**
+ * Get settlement results and net balances
+ */
+router.get(
+  "/:sessionCode/results",
+  asyncHandler(async (req: Request, res: Response) => {
+    const { sessionCode } = req.params;
+    const session = await getSessionWithPlayers(sessionCode);
+
+    if (!session) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    const { calculateSettlement } = await import("../utils/settlement");
+
+    try {
+      const results = calculateSettlement(session.players);
+      return res.status(200).json(results);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
   })
 );
 

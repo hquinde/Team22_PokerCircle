@@ -18,7 +18,7 @@ const seedUsers = async () => {
       const passwordHash = await bcrypt.hash(user.password, 10);
       const userID = crypto.randomUUID();
       await client.query(
-        'INSERT INTO users ("userID", username, email, password) VALUES ($1, $2, $3, $4) ON CONFLICT (email) DO NOTHING',
+        'INSERT INTO users (user_id, username, email, password_hash) VALUES ($1, $2, $3, $4) ON CONFLICT (email) DO NOTHING',
         [userID, user.username, user.email, passwordHash]
       );
     }

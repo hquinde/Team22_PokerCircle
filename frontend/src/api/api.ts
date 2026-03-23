@@ -71,6 +71,47 @@ export async function startSession(sessionCode: string): Promise<Session> {
   return response.json() as Promise<Session>;
 }
 
+export async function updatePlayerFinances(
+  sessionCode: string,
+  displayName: string,
+  finances: { buyIn?: number; rebuyTotal?: number; cashOut?: number }
+): Promise<any> {
+  const response = await fetch(`${BACKEND_URL}/api/sessions/${sessionCode}/players/${displayName}/finances`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(finances),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw new Error(body.error ?? 'Failed to update finances');
+  }
+  return response.json();
+}
+
+export async function completeSession(sessionCode: string): Promise<Session> {
+  const response = await fetch(`${BACKEND_URL}/api/sessions/${sessionCode}/complete`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw new Error(body.error ?? 'Failed to complete session');
+  }
+  return response.json() as Promise<Session>;
+}
+
+export async function getSessionResults(sessionCode: string): Promise<{
+  playerResults: { displayName: string; netResult: number }[];
+  transactions: { from: string; to: string; amount: number }[];
+}> {
+  const response = await fetch(`${BACKEND_URL}/api/sessions/${sessionCode}/results`);
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw new Error(body.error ?? 'Failed to fetch results');
+  }
+  return response.json();
+}
+
 export async function updateSessionStatus(sessionCode: string, status: SessionStatus): Promise<Session> {
   const response = await fetch(`${BACKEND_URL}/api/sessions/${sessionCode}/status`, {
     method: 'PATCH',

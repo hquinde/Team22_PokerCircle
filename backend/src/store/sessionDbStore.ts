@@ -16,7 +16,7 @@ export async function getSessionWithPlayers(sessionCode: string): Promise<Sessio
   if (sessionRes.rowCount === 0) return null;
 
   const playersRes = await pool.query(
-    `SELECT id, display_name, is_ready, joined_at
+    `SELECT id, display_name, is_ready, buy_in, rebuy_total, cash_out, joined_at
      FROM session_players
      WHERE session_code = $1
      ORDER BY joined_at ASC`,
@@ -35,9 +35,50 @@ export async function getSessionWithPlayers(sessionCode: string): Promise<Sessio
       playerId: String(r.id),
       displayName: r.display_name,
       isReady: r.is_ready,
+      buyIn: r.buy_in,
+      rebuyTotal: r.rebuy_total,
+      cashOut: r.cash_out,
       joinedAt: r.joined_at,
     })),
   };
+}
+
+export async function updatePlayerFinances(
+  sessionCode: string,
+  displayName: string,
+  finances: { buyIn?: number; rebuyTotal?: number; cashOut?: number }
+): Promise<boolean> {
+  const code = normalizeSessionCode(sessionCode);
+  const name = displayName.trim();
+
+  const fields: string[] = [];
+  const values: any[] = [];
+  let paramIdx = 1;
+
+  if (finances.buyIn !== undefined) {
+    fields.push(`buy_in = $${paramIdx++}`);
+    values.push(finances.buyIn);
+  }
+  if (finances.rebuyTotal !== undefined) {
+    fields.push(`rebuy_total = $${paramIdx++}`);
+    values.push(finances.rebuyTotal);
+  }
+  if (finances.cashOut !== undefined) {
+    fields.push(`cash_out = $${paramIdx++}`);
+    values.push(finances.cashOut);
+  }
+
+  if (fields.length === 0) return false;
+
+  values.push(code, name);
+  const query = `
+    UPDATE session_players 
+    SET ${fields.join(', ')} 
+    WHERE session_code = $${paramIdx++} AND display_name = $${paramIdx++}
+  `;
+
+  const result = await pool.query(query, values);
+  return (result.rowCount ?? 0) > 0;
 }
 
 export async function addPlayerToSession(

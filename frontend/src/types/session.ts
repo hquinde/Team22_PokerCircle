@@ -1,4 +1,4 @@
-export type SessionStatus = 'lobby' | 'starting' | 'active' | 'finished';
+export type SessionStatus = 'waiting' | 'starting' | 'active' | 'finished';
 
 export interface GameState {
   [key: string]: any;
@@ -9,6 +9,9 @@ export interface Player {
   displayName: string;
   joinedAt: string;
   isReady: boolean;
+  buyIn: number;
+  rebuyTotal: number;
+  cashOut: number;
 }
 
 export interface Session {

@@ -72,6 +72,9 @@ const initDb = async () => {
         session_code TEXT NOT NULL REFERENCES game_sessions(session_code) ON DELETE CASCADE,
         display_name TEXT NOT NULL,
         is_ready BOOLEAN NOT NULL DEFAULT FALSE,
+        buy_in INTEGER DEFAULT 0,
+        rebuy_total INTEGER DEFAULT 0,
+        cash_out INTEGER DEFAULT 0,
         joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         CONSTRAINT unique_player_per_session UNIQUE (session_code, display_name)
       );

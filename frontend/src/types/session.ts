@@ -12,6 +12,7 @@ export interface Player {
   buyIn: number;
   rebuyTotal: number;
   cashOut: number;
+  cashOutConfirmed: boolean;
 }
 
 export interface Session {

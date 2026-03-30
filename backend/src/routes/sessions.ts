@@ -186,21 +186,31 @@ router.patch(
   "/:sessionCode/players/:displayName/finances",
   asyncHandler(async (req: Request, res: Response) => {
     const { sessionCode, displayName } = req.params;
-    const { buyIn, rebuyTotal, cashOut } = req.body as {
+    const { buyIn, rebuyTotal, cashOut, cashOutConfirmed } = req.body as {
       buyIn?: number;
       rebuyTotal?: number;
       cashOut?: number;
+      cashOutConfirmed?: boolean;
     };
 
     const success = await updatePlayerFinances(sessionCode, displayName, {
       buyIn,
       rebuyTotal,
       cashOut,
+      cashOutConfirmed,
     });
 
     if (!success) {
       return res.status(404).json({ error: "Player or session not found" });
     }
+
+    const session = await getSessionWithPlayers(sessionCode);
+    const io: Server = req.app.get("io");
+    const payload: LobbyUpdatePayload = {
+      sessionCode,
+      players: session?.players ?? [],
+    };
+    io.to(sessionCode).emit("lobby:update", payload);
 
     return res.status(200).json({ message: "Player finances updated", sessionCode, displayName });
   })
@@ -222,6 +232,23 @@ router.post(
 
     if (session.hostUserId !== req.session.userId) {
       return res.status(403).json({ error: "Only the host can complete the session" });
+    }
+
+    // Ensure minimum player count
+    if (session.players.length < 2) {
+      return res.status(400).json({
+        error: "Cannot end session. A session must have at least 2 players.",
+      });
+    }
+
+    // Ensure all players have submitted cash-out
+    const unconfirmed = session.players.filter((p) => !p.cashOutConfirmed);
+    if (unconfirmed.length > 0) {
+      return res.status(400).json({
+        error: `Cannot end session. The following players have not submitted cash-out: ${unconfirmed
+          .map((p) => p.displayName)
+          .join(", ")}`,
+      });
     }
 
     // Transition status to 'finished'
@@ -246,6 +273,10 @@ router.get(
 
     if (!session) {
       return res.status(404).json({ error: "Session not found" });
+    }
+
+    if (session.status !== "finished") {
+      return res.status(400).json({ error: "Session is not finished yet" });
     }
 
     const { calculateSettlement } = await import("../utils/settlement");

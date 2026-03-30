@@ -156,7 +156,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
   async function handleReadyToggle() {
     const myPlayerName = resolvedPlayerNameRef.current;
     if (!myPlayerName) return;
-    const myIsReady = players.find(p => p.name === myPlayerName)?.isReady ?? false;
+    const myIsReady = players.find(p => p.displayName === myPlayerName)?.isReady ?? false;
     const next = !myIsReady;
     try {
       const res = await fetch(
@@ -257,7 +257,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
         renderItem={({ item, index }) => (
           <View style={styles.playerRow}>
             <View>
-              <Text style={styles.playerName}>{item.name}</Text>
+              <Text style={styles.playerName}>{item.displayName}</Text>
               <Text style={styles.playerLabel}>Player {index + 1}</Text>
             </View>
             <Text style={item.isReady ? styles.readyBadge : styles.notReadyBadge}>

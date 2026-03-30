@@ -74,7 +74,7 @@ export async function startSession(sessionCode: string): Promise<Session> {
 export async function updatePlayerFinances(
   sessionCode: string,
   displayName: string,
-  finances: { buyIn?: number; rebuyTotal?: number; cashOut?: number }
+  finances: { buyIn?: number; rebuyTotal?: number; cashOut?: number; cashOutConfirmed?: boolean }
 ): Promise<any> {
   const response = await fetch(`${BACKEND_URL}/api/sessions/${sessionCode}/players/${displayName}/finances`, {
     method: 'PATCH',

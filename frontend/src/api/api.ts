@@ -248,3 +248,14 @@ export async function respondToInvite(
   }
   return response.json() as Promise<{ id: number; status: string; sessionCode: string }>;
 }
+
+export async function declineInvite(id: number): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/api/invites/${id}/decline`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw new Error(body.error ?? 'Failed to decline invite');
+  }
+}

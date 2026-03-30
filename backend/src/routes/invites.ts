@@ -37,6 +37,46 @@ router.get(
   })
 );
 
+// POST /api/invites/:id/decline
+router.post(
+  "/:id/decline",
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const inviteId = parseInt((req.params as { id: string }).id, 10);
+    const userId = req.session.userId!;
+
+    const inviteResult = await pool.query(
+      `SELECT id, invitee_id, status FROM session_invites WHERE id = $1`,
+      [inviteId]
+    );
+
+    if (inviteResult.rows.length === 0) {
+      return res.status(404).json({ error: "Invite not found" });
+    }
+
+    const invite = inviteResult.rows[0] as {
+      id: number;
+      invitee_id: string;
+      status: string;
+    };
+
+    if (invite.invitee_id !== userId) {
+      return res.status(403).json({ error: "Not your invite" });
+    }
+
+    if (invite.status !== "pending") {
+      return res.status(409).json({ error: "Invite already responded to" });
+    }
+
+    await pool.query(
+      `UPDATE session_invites SET status = 'declined' WHERE id = $1`,
+      [inviteId]
+    );
+
+    return res.status(200).json({ id: inviteId, status: "declined" });
+  })
+);
+
 router.post(
   "/:id/respond",
   requireAuth,

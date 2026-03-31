@@ -1,5 +1,6 @@
 import type { Session } from '../types/session';
 import type { Friend, FriendRequest, SessionInvite } from '../types/invite';
+import type { UserStats, UserSession } from '../types/profile';
 import { BACKEND_URL } from '../config/api';
 
 export type SessionStatus = 'waiting' | 'starting' | 'active' | 'finished';
@@ -258,4 +259,36 @@ export async function declineInvite(id: number): Promise<void> {
     const body = await response.json().catch(() => ({})) as { error?: string };
     throw new Error(body.error ?? 'Failed to decline invite');
   }
+}
+
+// ---------------------------------------------------------------------------
+// Profile
+// ---------------------------------------------------------------------------
+
+export async function getUserStats(userId: number): Promise<UserStats> {
+  const response = await fetch(`${BACKEND_URL}/api/users/${userId}/stats`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw Object.assign(new Error(body.error ?? 'Failed to fetch user stats'), {
+      statusCode: response.status,
+    });
+  }
+  const data = await response.json() as { stats: UserStats };
+  return data.stats;
+}
+
+export async function getUserSessions(userId: number): Promise<UserSession[]> {
+  const response = await fetch(`${BACKEND_URL}/api/users/${userId}/sessions`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw Object.assign(new Error(body.error ?? 'Failed to fetch user sessions'), {
+      statusCode: response.status,
+    });
+  }
+  const data = await response.json() as { sessions: UserSession[] };
+  return data.sessions;
 }

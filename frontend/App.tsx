@@ -8,7 +8,6 @@ import LobbyScreen from './src/screens/LobbyScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import WelcomeScreen from './src/screens/WelcomeScreen';
-import FindFriendsScreen from './src/screens/FindFriendsScreen';
 import GameScreen from './src/screens/GameScreen';
 import InviteFriendsScreen from './src/screens/InviteFriendsScreen';
 import ResultsScreen from './src/screens/ResultsScreen';
@@ -22,7 +21,6 @@ export type RootStackParamList = {
   Home: undefined;
   JoinSession: { preFilledCode?: string } | undefined;
   Lobby: { sessionCode: string };
-  FindFriends: undefined;
   InviteFriends: { sessionCode: string };
   Game: { sessionCode: string };
   /** TM22-88 — session summary: net results + who-pays-who settlement */
@@ -44,7 +42,6 @@ export default function App() {
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="JoinSession" component={JoinSessionScreen} />
         <Stack.Screen name="Lobby" component={LobbyScreen} />
-        <Stack.Screen name="FindFriends" component={FindFriendsScreen} />
         <Stack.Screen
           name="InviteFriends"
           component={InviteFriendsScreen}

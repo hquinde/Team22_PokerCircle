@@ -1,14 +1,7 @@
 import React, { useState } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View,
-  TextInput,
-  Pressable,
-  Alert,
-  ActivityIndicator,
-  ScrollView,
-  StatusBar,
+  StyleSheet, Text, View, TextInput, Pressable,
+  ActivityIndicator, ScrollView, StatusBar,
 } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
@@ -18,29 +11,32 @@ import { BACKEND_URL } from '../config/api';
 type Props = StackScreenProps<RootStackParamList, 'Signup'>;
 
 export default function SignupScreen({ navigation }: Props) {
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername]             = useState('');
+  const [email, setEmail]                   = useState('');
+  const [password, setPassword]             = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]               = useState(false);
+  const [errorMessage, setErrorMessage]     = useState<string | null>(null);
+
+  const clearError = () => setErrorMessage(null);
 
   const handleSignup = async () => {
+    // Client-side validation first
     if (!username || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      setErrorMessage('Please fill in all fields.');
       return;
     }
-
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      setErrorMessage('Passwords do not match.');
       return;
     }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      setErrorMessage('Please enter a valid email address.');
       return;
     }
 
+    setErrorMessage(null);
     setLoading(true);
     try {
       const response = await fetch(`${BACKEND_URL}/api/auth/signup`, {
@@ -50,17 +46,17 @@ export default function SignupScreen({ navigation }: Props) {
         body: JSON.stringify({ username, email, password }),
       });
 
-      const data = await response.json();
+      const data = await response.json() as { error?: string; message?: string };
 
       if (response.ok) {
-        Alert.alert('Success', 'Account created successfully');
         navigation.replace('Home');
+      } else if (response.status === 409) {
+        setErrorMessage(data.error ?? 'That email or username is already taken.');
       } else {
-        Alert.alert('Error', data.error || 'Signup failed');
+        setErrorMessage(data.error ?? data.message ?? 'Sign up failed. Please try again.');
       }
-    } catch (error) {
-      Alert.alert('Error', 'Could not connect to server');
-      console.error(error);
+    } catch {
+      setErrorMessage('Could not connect to server. Check your connection.');
     } finally {
       setLoading(false);
     }
@@ -77,43 +73,41 @@ export default function SignupScreen({ navigation }: Props) {
         placeholder="Username"
         placeholderTextColor={colors.placeholder}
         value={username}
-        onChangeText={setUsername}
+        onChangeText={(t) => { setUsername(t); clearError(); }}
         autoCapitalize="none"
       />
-
       <TextInput
         style={styles.input}
         placeholder="Email"
         placeholderTextColor={colors.placeholder}
         value={email}
-        onChangeText={setEmail}
+        onChangeText={(t) => { setEmail(t); clearError(); }}
         autoCapitalize="none"
         keyboardType="email-address"
       />
-
       <TextInput
         style={styles.input}
         placeholder="Password"
         placeholderTextColor={colors.placeholder}
         value={password}
-        onChangeText={setPassword}
+        onChangeText={(t) => { setPassword(t); clearError(); }}
         secureTextEntry
       />
-
       <TextInput
         style={styles.input}
         placeholder="Confirm Password"
         placeholderTextColor={colors.placeholder}
         value={confirmPassword}
-        onChangeText={setConfirmPassword}
+        onChangeText={(t) => { setConfirmPassword(t); clearError(); }}
         secureTextEntry
       />
 
+      {errorMessage !== null && (
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      )}
+
       <Pressable
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed,
-        ]}
+        style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
         onPress={handleSignup}
         disabled={loading}
       >
@@ -143,27 +137,32 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 40,
     textAlign: 'center',
-    color: colors.primaryDark, // red title
+    color: colors.primaryDark,
   },
   input: {
-    backgroundColor: colors.inputBackground, // dark gray input
+    backgroundColor: colors.inputBackground,
     color: colors.text,
     padding: 15,
     borderRadius: 8,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: colors.inputBorder, // red border
+    borderColor: colors.inputBorder,
+  },
+  errorText: {
+    color: colors.primary,
+    fontSize: 14,
+    marginBottom: 12,
+    textAlign: 'center',
+    paddingHorizontal: 4,
   },
   button: {
-    backgroundColor: colors.primary, // red button
+    backgroundColor: colors.primary,
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 10,
   },
-  buttonPressed: {
-    opacity: 0.85,
-  },
+  buttonPressed: { opacity: 0.85 },
   buttonText: {
     color: colors.textOnPrimary,
     fontSize: 18,
@@ -174,7 +173,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: colors.primary, // red link
+    color: colors.primary,
     fontSize: 16,
   },
 });

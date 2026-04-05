@@ -246,11 +246,13 @@ router.post(
 
     const result = await pool.query(
       `SELECT
-         gs.host_user_id AS "hostUserId",
+         gs.host_user_id  AS "hostUserId",
          gs.status,
-         p.display_name  AS "displayName",
-         p.is_ready      AS "isReady"
+         u.username       AS "hostUsername",
+         p.display_name   AS "displayName",
+         p.is_ready       AS "isReady"
        FROM game_sessions gs
+       JOIN users u ON u.user_id = gs.host_user_id
        LEFT JOIN session_players p ON p.session_code = gs.session_code
        WHERE gs.session_code = $1`,
       [sessionCode]
@@ -270,7 +272,12 @@ router.post(
       return res.status(400).json({ error: 'At least 2 players are required to start the game' });
     }
 
-    const notReady = players.filter((p) => !p['isReady']);
+    const hostUsername = result.rows[0]['hostUsername'] as string;
+
+    const notReady = players.filter(
+      (p) => !p['isReady'] && p['displayName'] !== hostUsername
+    );
+
     if (notReady.length > 0) {
       return res.status(400).json({
         error: `Not all players are ready (${notReady.map((p) => p['displayName'] as string).join(', ')})`,

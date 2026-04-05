@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, Pressable, Alert, ActivityIndicator } from 'react-native';
+import {
+  StyleSheet, Text, View, TextInput, Pressable,
+  ActivityIndicator, ScrollView,
+} from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { colors } from '../theme/colors';
@@ -8,46 +11,49 @@ import { BACKEND_URL } from '../config/api';
 type Props = StackScreenProps<RootStackParamList, 'Login'>;
 
 export default function LoginScreen({ navigation }: Props) {
-  const [email, setEmail] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState<'main' | 'demo1' | 'demo2' | null>(null);
+  const [loading, setLoading]   = useState<'main' | 'demo1' | 'demo2' | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      setErrorMessage('Please fill in all fields.');
       return;
     }
     if (loading) return;
 
+    setErrorMessage(null);
     setLoading('main');
     try {
       const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      const data = await response.json() as { message?: string; error?: string };
 
       if (response.ok) {
         navigation.replace('Home');
       } else {
-        Alert.alert('Error', data.error || 'Login failed');
+        setErrorMessage(data.message ?? data.error ?? 'Login failed. Please try again.');
       }
-    } catch (error) {
-      Alert.alert('Error', 'Could not connect to server');
-      console.error(error);
+    } catch {
+      setErrorMessage('Could not connect to server. Check your connection.');
     } finally {
       setLoading(null);
     }
   };
 
-  const handleDemoLogin = async (key: 'demo1' | 'demo2', demoEmail: string, demoPassword: string) => {
+  const handleDemoLogin = async (
+    key: 'demo1' | 'demo2',
+    demoEmail: string,
+    demoPassword: string,
+  ) => {
     if (loading) return;
-
+    setErrorMessage(null);
     setLoading(key);
     try {
       const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
@@ -57,23 +63,24 @@ export default function LoginScreen({ navigation }: Props) {
         body: JSON.stringify({ email: demoEmail, password: demoPassword }),
       });
 
-      const data = await response.json();
+      const data = await response.json() as { message?: string; error?: string };
 
       if (response.ok) {
         navigation.replace('Home');
       } else {
-        Alert.alert('Error', data.error ?? data.message ?? 'Demo login failed. Run npm run seed first.');
+        setErrorMessage(
+          data.message ?? data.error ?? 'Demo login failed. Run `npm run seed` first.',
+        );
       }
-    } catch (error) {
-      Alert.alert('Error', 'Could not connect to server');
-      console.error(error);
+    } catch {
+      setErrorMessage('Could not connect to server. Check your connection.');
     } finally {
       setLoading(null);
     }
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Login</Text>
 
       <TextInput
@@ -81,7 +88,7 @@ export default function LoginScreen({ navigation }: Props) {
         placeholder="Email"
         placeholderTextColor={colors.placeholder}
         value={email}
-        onChangeText={setEmail}
+        onChangeText={(t) => { setEmail(t); setErrorMessage(null); }}
         autoCapitalize="none"
         keyboardType="email-address"
       />
@@ -91,9 +98,13 @@ export default function LoginScreen({ navigation }: Props) {
         placeholder="Password"
         placeholderTextColor={colors.placeholder}
         value={password}
-        onChangeText={setPassword}
+        onChangeText={(t) => { setPassword(t); setErrorMessage(null); }}
         secureTextEntry
       />
+
+      {errorMessage !== null && (
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      )}
 
       <Pressable
         style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
@@ -136,13 +147,13 @@ export default function LoginScreen({ navigation }: Props) {
       <Pressable onPress={() => navigation.navigate('Signup')} style={styles.link}>
         <Text style={styles.linkText}>Don't have an account? Sign Up</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: colors.background,
     padding: 20,
     justifyContent: 'center',
@@ -163,6 +174,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.inputBorder,
   },
+  errorText: {
+    color: colors.primary,
+    fontSize: 14,
+    marginBottom: 12,
+    textAlign: 'center',
+    paddingHorizontal: 4,
+  },
   button: {
     backgroundColor: colors.primary,
     padding: 15,
@@ -170,9 +188,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
-  buttonPressed: {
-    opacity: 0.7,
-  },
+  buttonPressed: { opacity: 0.7 },
   buttonText: {
     color: colors.textOnPrimary,
     fontSize: 18,

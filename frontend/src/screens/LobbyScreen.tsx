@@ -321,7 +321,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
                 <Text style={styles.playerLabel}>Player {index + 1}</Text>
               </View>
 
-              {isMe && !isHost ? (
+              {isMe ? (
                 <Pressable
                   onPress={handleReadyToggle}
                   style={[styles.readyButton, item.isReady && styles.readyButtonActive]}

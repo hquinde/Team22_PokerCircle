@@ -19,7 +19,7 @@ router.post(
 
     const existingUser = await UserModel.findByEmail(email);
     if (existingUser) {
-      res.status(400).json({ error: "Username or email already exists" });
+      res.status(409).json({ error: "An account with that email or username already exists" });
       return;
     }
 

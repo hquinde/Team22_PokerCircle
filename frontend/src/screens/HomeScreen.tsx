@@ -19,6 +19,7 @@ import {
 } from '../api/api';
 import { socket } from '../services/socket';
 import { BACKEND_URL } from '../config/api';
+import { clearAuth } from '../services/authStorage';
 import type { FriendRequest, SessionInvite } from '../types/invite';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
@@ -129,6 +130,10 @@ export default function HomeScreen({ navigation }: Props) {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Subtask 4: clear persisted auth on logout so the next app launch correctly
+  // shows the Login screen instead of auto-navigating to Home.
+  // ---------------------------------------------------------------------------
   async function handleLogout() {
     setLoggingOut(true);
     try {
@@ -139,6 +144,11 @@ export default function HomeScreen({ navigation }: Props) {
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
+      // Clear the persisted token regardless of whether the server call
+      // succeeded — stale local state should never block the user from
+      // reaching the Login screen.
+      await clearAuth();
+
       socket.disconnect();
       userIdRef.current = null;
       setUsername(null);
@@ -566,5 +576,4 @@ const styles = StyleSheet.create({
     opacity: 0.85,
     transform: [{ scale: 0.97 }],
   },
-  
 });

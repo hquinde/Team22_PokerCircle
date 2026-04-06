@@ -7,6 +7,7 @@ import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { colors } from '../theme/colors';
 import { BACKEND_URL } from '../config/api';
+import { saveAuth } from '../services/authStorage';
 
 type Props = StackScreenProps<RootStackParamList, 'Login'>;
 
@@ -16,26 +17,38 @@ export default function LoginScreen({ navigation }: Props) {
   const [loading, setLoading]   = useState<'main' | 'demo1' | 'demo2' | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      setErrorMessage('Please fill in all fields.');
-      return;
-    }
+  const doLogin = async (
+    key: 'main' | 'demo1' | 'demo2',
+    loginEmail: string,
+    loginPassword: string,
+  ) => {
     if (loading) return;
-
     setErrorMessage(null);
-    setLoading('main');
+    setLoading(key);
+
     try {
       const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       });
 
-      const data = await response.json() as { message?: string; error?: string };
+      const data = await response.json() as {
+        userID?: string;
+        username?: string;
+        email?: string;
+        message?: string;
+        error?: string;
+      };
 
-      if (response.ok) {
+      if (response.ok && data.userID && data.username && data.email) {
+        // Subtask 1/4: persist auth so the next app launch skips Login
+        await saveAuth({
+          userID: data.userID,
+          username: data.username,
+          email: data.email,
+        });
         navigation.replace('Home');
       } else {
         setErrorMessage(data.message ?? data.error ?? 'Login failed. Please try again.');
@@ -47,37 +60,16 @@ export default function LoginScreen({ navigation }: Props) {
     }
   };
 
-  const handleDemoLogin = async (
-    key: 'demo1' | 'demo2',
-    demoEmail: string,
-    demoPassword: string,
-  ) => {
-    if (loading) return;
-    setErrorMessage(null);
-    setLoading(key);
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email: demoEmail, password: demoPassword }),
-      });
-
-      const data = await response.json() as { message?: string; error?: string };
-
-      if (response.ok) {
-        navigation.replace('Home');
-      } else {
-        setErrorMessage(
-          data.message ?? data.error ?? 'Demo login failed. Run `npm run seed` first.',
-        );
-      }
-    } catch {
-      setErrorMessage('Could not connect to server. Check your connection.');
-    } finally {
-      setLoading(null);
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setErrorMessage('Please fill in all fields.');
+      return;
     }
+    await doLogin('main', email, password);
   };
+
+  const handleDemoLogin = (key: 'demo1' | 'demo2', demoEmail: string, demoPassword: string) =>
+    doLogin(key, demoEmail, demoPassword);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

@@ -1,9 +1,22 @@
 CREATE TABLE IF NOT EXISTS users (
   "userID"   TEXT  PRIMARY KEY,
-  username   TEXT  NOT NULL,
+  username   TEXT  NOT NULL UNIQUE,
   email      TEXT  NOT NULL UNIQUE,
   password   TEXT  NOT NULL
 );
+
+-- Ensure username uniqueness constraint exists on pre-existing databases
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'users_username_key'
+      AND conrelid = 'users'::regclass
+  ) THEN
+    ALTER TABLE users ADD CONSTRAINT users_username_key UNIQUE (username);
+  END IF;
+END $$;
 
 -- Express-session store table (connect-pg-simple)
 CREATE TABLE IF NOT EXISTS "session" (

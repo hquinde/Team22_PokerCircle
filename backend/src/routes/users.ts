@@ -72,4 +72,40 @@ router.get(
   })
 );
 
+// PATCH /api/users/:userId/displayname
+// Updates the display name (username) for a user
+router.patch(
+  "/:userId/displayname",
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const { newName } = req.body;
+
+    if (!newName || String(newName).trim() === "") {
+      res.status(400).json({ error: "Display name is required" });
+      return;
+    }
+
+    if (String(req.session.userId) !== userId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    try {
+      const result = await pool.query(
+        `UPDATE users SET username = $1 WHERE user_id = $2 RETURNING username`,
+        [newName.trim(), userId]
+      );
+      res.json({ username: result.rows[0].username });
+    } catch (err: any) {
+      if (err.code === "23505") {
+        res.status(409).json({ error: "Username already taken" });
+        return;
+      }
+      throw err;
+    }
+  })
+);
+
 export default router;
+

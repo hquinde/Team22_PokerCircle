@@ -6,12 +6,14 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { colors } from '../theme/colors';
-import { getUserStats, getUserSessions } from '../api/api';
+import { getUserStats, getUserSessions, updateDisplayName } from '../api/api';
 import { BACKEND_URL } from '../config/api';
 import type { UserStats, UserSession } from '../types/profile';
 
@@ -32,6 +34,7 @@ function formatDate(iso: string): string {
 
 export default function ProfileScreen({ navigation: _navigation }: Props) {
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<number>(0);
   const [username, setUsername] = useState('');
   const [stats, setStats] = useState<UserStats>({
     sessionsPlayed: 0,
@@ -40,6 +43,10 @@ export default function ProfileScreen({ navigation: _navigation }: Props) {
     biggestLoss: 0,
   });
   const [sessions, setSessions] = useState<UserSession[]>([]);
+  const [editMode, setEditMode] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const [editError, setEditError] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -54,6 +61,7 @@ export default function ProfileScreen({ navigation: _navigation }: Props) {
         getUserSessions(me.userId),
       ]);
 
+      setUserId(me.userId);
       setUsername(me.username);
       setStats(fetchedStats);
       setSessions(fetchedSessions);
@@ -63,6 +71,32 @@ export default function ProfileScreen({ navigation: _navigation }: Props) {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  function startEdit() {
+    setEditValue(username);
+    setEditError('');
+    setEditMode(true);
+  }
+
+  function cancelEdit() {
+    setEditMode(false);
+    setEditError('');
+  }
+
+  async function confirmEdit() {
+    if (editLoading) return;
+    setEditLoading(true);
+    try {
+      const updated = await updateDisplayName(userId, editValue.trim());
+      setUsername(updated);
+      setEditMode(false);
+      setEditError('');
+    } catch (err: any) {
+      setEditError(err.message ?? 'Failed to update display name');
+    } finally {
+      setEditLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -79,7 +113,35 @@ export default function ProfileScreen({ navigation: _navigation }: Props) {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0D0D0D" />
       <View style={styles.content}>
-        <Text style={styles.title}>{username}</Text>
+        <View style={styles.titleRow}>
+          {editMode ? (
+            <>
+              <TextInput
+                style={styles.nameInput}
+                value={editValue}
+                onChangeText={setEditValue}
+                autoFocus
+                maxLength={30}
+                returnKeyType="done"
+                onSubmitEditing={confirmEdit}
+              />
+              <TouchableOpacity onPress={confirmEdit} disabled={editLoading} style={styles.editActionBtn}>
+                <Text style={styles.editActionText}>✓</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={cancelEdit} style={styles.editActionBtn}>
+                <Text style={styles.editActionText}>✕</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.title}>{username}</Text>
+              <TouchableOpacity onPress={startEdit} style={styles.editIconBtn}>
+                <Text style={styles.editIcon}>✎</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+        {editError ? <Text style={styles.editErrorText}>{editError}</Text> : null}
 
         {/* Stats cards */}
         <View style={styles.statsGrid}>
@@ -154,12 +216,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 24,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   title: {
     fontSize: 32,
     fontWeight: '800',
     color: colors.primary,
-    marginBottom: 20,
     letterSpacing: 1,
+    flex: 1,
+  },
+  editIconBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  editIcon: {
+    fontSize: 22,
+    color: colors.placeholder,
+  },
+  nameInput: {
+    flex: 1,
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.primary,
+    paddingVertical: 2,
+    letterSpacing: 1,
+  },
+  editActionBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  editActionText: {
+    fontSize: 22,
+    color: colors.text,
+  },
+  editErrorText: {
+    color: '#F44336',
+    fontSize: 13,
+    marginBottom: 12,
+    marginTop: -12,
   },
   statsGrid: {
     flexDirection: 'row',

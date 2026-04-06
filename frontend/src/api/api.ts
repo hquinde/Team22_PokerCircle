@@ -292,3 +292,20 @@ export async function getUserSessions(userId: number): Promise<UserSession[]> {
   const data = await response.json() as { sessions: UserSession[] };
   return data.sessions;
 }
+
+export async function updateDisplayName(userId: number, newName: string): Promise<string> {
+  const response = await fetch(`${BACKEND_URL}/api/users/${userId}/displayname`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ newName }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw Object.assign(new Error(body.error ?? 'Failed to update display name'), {
+      statusCode: response.status,
+    });
+  }
+  const data = await response.json() as { username: string };
+  return data.username;
+}

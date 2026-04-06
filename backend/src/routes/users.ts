@@ -93,7 +93,7 @@ router.patch(
 
     try {
       const result = await pool.query(
-        `UPDATE users SET username = $1 WHERE "userID" = $2 RETURNING username`,
+        `UPDATE users SET username = $1 WHERE user_id = $2 RETURNING username`,
         [newName.trim(), userId]
       );
       res.json({ username: result.rows[0].username });

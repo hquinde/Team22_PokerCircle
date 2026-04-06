@@ -7,21 +7,21 @@ import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { colors } from '../theme/colors';
 import { BACKEND_URL } from '../config/api';
+import { saveAuth } from '../services/authStorage';
 
 type Props = StackScreenProps<RootStackParamList, 'Signup'>;
 
 export default function SignupScreen({ navigation }: Props) {
-  const [username, setUsername]             = useState('');
-  const [email, setEmail]                   = useState('');
-  const [password, setPassword]             = useState('');
+  const [username, setUsername]               = useState('');
+  const [email, setEmail]                     = useState('');
+  const [password, setPassword]               = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading]               = useState(false);
-  const [errorMessage, setErrorMessage]     = useState<string | null>(null);
+  const [loading, setLoading]                 = useState(false);
+  const [errorMessage, setErrorMessage]       = useState<string | null>(null);
 
   const clearError = () => setErrorMessage(null);
 
   const handleSignup = async () => {
-    // Client-side validation first
     if (!username || !email || !password || !confirmPassword) {
       setErrorMessage('Please fill in all fields.');
       return;
@@ -38,6 +38,7 @@ export default function SignupScreen({ navigation }: Props) {
 
     setErrorMessage(null);
     setLoading(true);
+
     try {
       const response = await fetch(`${BACKEND_URL}/api/auth/signup`, {
         method: 'POST',
@@ -46,9 +47,21 @@ export default function SignupScreen({ navigation }: Props) {
         body: JSON.stringify({ username, email, password }),
       });
 
-      const data = await response.json() as { error?: string; message?: string };
+      const data = await response.json() as {
+        userID?: string;
+        username?: string;
+        email?: string;
+        error?: string;
+        message?: string;
+      };
 
-      if (response.ok) {
+      if (response.ok && data.userID && data.username && data.email) {
+        // Persist auth so a fresh app launch goes straight to Home
+        await saveAuth({
+          userID: data.userID,
+          username: data.username,
+          email: data.email,
+        });
         navigation.replace('Home');
       } else if (response.status === 409) {
         setErrorMessage(data.error ?? 'That email or username is already taken.');

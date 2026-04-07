@@ -33,9 +33,7 @@ export default function ResultsScreen({ route, navigation }: Props) {
       setError(null);
 
       const data = await getSessionResults(sessionCode);
-      const sorted = [...data.playerResults].sort(
-        (a, b) => b.netResult - a.netResult
-      );
+      const sorted = [...data.playerResults].sort((a, b) => b.netResult - a.netResult);
 
       setPlayerResults(sorted);
       setTransactions(data.transactions);
@@ -64,6 +62,13 @@ export default function ResultsScreen({ route, navigation }: Props) {
 
     return unsubscribe;
   }, [navigation]);
+
+  const handleReturnHome = () => {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    });
+  };
 
   const openUrlWithFallback = async (primaryUrl: string, fallbackUrl: string) => {
     try {
@@ -120,8 +125,8 @@ export default function ResultsScreen({ route, navigation }: Props) {
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
           <ErrorMessage message={error} onRetry={loadResults} />
-          <Pressable style={styles.doneButton} onPress={() => navigation.navigate('Home')}>
-            <Text style={styles.doneButtonText}>Go Home</Text>
+          <Pressable style={styles.doneButton} onPress={handleReturnHome}>
+            <Text style={styles.doneButtonText}>Return to Home</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -141,15 +146,17 @@ export default function ResultsScreen({ route, navigation }: Props) {
         {playerResults.map((item) => {
           const isWinner = item.netResult > 0;
           const isLoser = item.netResult < 0;
-          const sign = isWinner ? '+' : '';
+          const sign = isWinner ? '+' : isLoser ? '-' : '';
 
           return (
             <View key={item.displayName} style={styles.resultRow}>
               <View style={styles.resultLeft}>
                 <Text style={styles.medal}>
-                  {isWinner ? 'WIN' : isLoser ? 'LOSS' : 'EVEN'}
+                  {isWinner ? '↑' : isLoser ? '↓' : '—'}
                 </Text>
-                <Text style={styles.playerName}>{item.displayName}</Text>
+                <Text style={styles.playerName} numberOfLines={1}>
+                  {item.displayName}
+                </Text>
               </View>
 
               <Text
@@ -174,14 +181,15 @@ export default function ResultsScreen({ route, navigation }: Props) {
         ) : (
           transactions.map((t, idx) => (
             <View key={idx} style={styles.transactionCard}>
-              <View style={styles.transactionRow}>
-                <View style={styles.transactionLeft}>
-                  <Text style={styles.fromName}>{t.from}</Text>
-                  <Text style={styles.arrow}> to </Text>
-                  <Text style={styles.toName}>{t.to}</Text>
-                </View>
+              <View style={styles.transactionHeader}>
+                <Text style={styles.transactionLabel}>Settlement</Text>
                 <Text style={styles.transactionAmount}>${t.amount.toFixed(2)}</Text>
               </View>
+
+              <Text style={styles.transactionText}>
+                <Text style={styles.fromName}>{t.from}</Text> pays{' '}
+                <Text style={styles.toName}>{t.to}</Text>
+              </Text>
 
               <View style={styles.paymentButtonsRow}>
                 <Pressable
@@ -214,9 +222,9 @@ export default function ResultsScreen({ route, navigation }: Props) {
             styles.doneButton,
             pressed ? styles.doneButtonPressed : null,
           ]}
-          onPress={() => navigation.navigate('Home')}
+          onPress={handleReturnHome}
         >
-          <Text style={styles.doneButtonText}>Done</Text>
+          <Text style={styles.doneButtonText}>Return to Home</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -228,32 +236,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+
   scroll: {
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 48,
   },
+
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
   },
+
   headerRow: {
     marginBottom: 24,
   },
+
   title: {
     fontSize: 36,
     fontWeight: '800',
     color: colors.primaryDark,
     letterSpacing: 1,
   },
+
   code: {
     fontSize: 13,
     color: colors.placeholder,
     letterSpacing: 4,
     marginTop: 2,
   },
+
   sectionLabel: {
     fontSize: 11,
     fontWeight: '700',
@@ -262,6 +276,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 10,
   },
+
   sectionLabelWithSpacing: {
     fontSize: 11,
     fontWeight: '700',
@@ -271,6 +286,7 @@ const styles = StyleSheet.create({
     marginTop: 28,
     marginBottom: 10,
   },
+
   resultRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -282,33 +298,44 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     borderColor: colors.inputBorder,
+    gap: 12,
   },
+
   resultLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
   },
+
   medal: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.placeholder,
     marginRight: 10,
   },
+
   playerName: {
     color: colors.text,
     fontSize: 16,
     fontWeight: '600',
+    flexShrink: 1,
   },
+
   netAmount: {
     fontSize: 18,
     fontWeight: '800',
     color: colors.text,
   },
+
   positive: {
     color: '#4CAF50',
   },
+
   negative: {
     color: colors.primary,
   },
+
   evenBox: {
     backgroundColor: colors.inputBackground,
     borderRadius: 12,
@@ -317,11 +344,13 @@ const styles = StyleSheet.create({
     borderColor: colors.inputBorder,
     alignItems: 'center',
   },
+
   evenText: {
     color: colors.text,
     fontSize: 15,
     textAlign: 'center',
   },
+
   transactionCard: {
     backgroundColor: colors.inputBackground,
     borderRadius: 12,
@@ -331,43 +360,53 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.inputBorder,
   },
-  transactionRow: {
+
+  transactionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
+    gap: 12,
   },
-  transactionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    flexWrap: 'wrap',
+
+  transactionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.placeholder,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
+
+  transactionText: {
+    color: colors.text,
+    fontSize: 16,
+    lineHeight: 22,
+  },
+
   fromName: {
     color: colors.primary,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
-  arrow: {
-    color: colors.placeholder,
-    fontSize: 15,
-    marginHorizontal: 2,
-  },
+
   toName: {
     color: '#4CAF50',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
+
   transactionAmount: {
     color: colors.text,
     fontSize: 17,
     fontWeight: '800',
-    marginLeft: 12,
   },
+
   paymentButtonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 12,
+    marginTop: 14,
   },
+
   payButton: {
     flex: 1,
     borderRadius: 10,
@@ -375,31 +414,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 4,
   },
+
   venmoButton: {
     backgroundColor: '#3D95CE',
   },
+
   paypalButton: {
     backgroundColor: '#003087',
   },
+
   cashAppButton: {
     backgroundColor: '#00C244',
   },
+
   payButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },
+
   doneButton: {
     backgroundColor: colors.primary,
     borderRadius: 12,
     paddingVertical: 18,
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: 40,
+    marginBottom: 10,
     paddingHorizontal: 24,
   },
+
   doneButtonPressed: {
     opacity: 0.85,
   },
+
   doneButtonText: {
     color: colors.textOnPrimary,
     fontSize: 18,

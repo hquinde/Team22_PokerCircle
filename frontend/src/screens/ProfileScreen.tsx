@@ -32,7 +32,7 @@ function formatDate(iso: string): string {
   });
 }
 
-export default function ProfileScreen({ navigation: _navigation }: Props) {
+export default function ProfileScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<number>(0);
   const [username, setUsername] = useState('');
@@ -54,7 +54,7 @@ export default function ProfileScreen({ navigation: _navigation }: Props) {
         credentials: 'include',
       });
       if (!meRes.ok) throw new Error('Not authenticated');
-      const me = await meRes.json() as { userId: number; username: string };
+      const me = (await meRes.json()) as { userId: number; username: string };
 
       const [fetchedStats, fetchedSessions] = await Promise.all([
         getUserStats(me.userId),
@@ -113,6 +113,12 @@ export default function ProfileScreen({ navigation: _navigation }: Props) {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0D0D0D" />
       <View style={styles.content}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Text style={styles.backText}>← Back</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.titleRow}>
           {editMode ? (
             <>
@@ -125,7 +131,11 @@ export default function ProfileScreen({ navigation: _navigation }: Props) {
                 returnKeyType="done"
                 onSubmitEditing={confirmEdit}
               />
-              <TouchableOpacity onPress={confirmEdit} disabled={editLoading} style={styles.editActionBtn}>
+              <TouchableOpacity
+                onPress={confirmEdit}
+                disabled={editLoading}
+                style={styles.editActionBtn}
+              >
                 <Text style={styles.editActionText}>✓</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={cancelEdit} style={styles.editActionBtn}>
@@ -141,26 +151,34 @@ export default function ProfileScreen({ navigation: _navigation }: Props) {
             </>
           )}
         </View>
+
         {editError ? <Text style={styles.editErrorText}>{editError}</Text> : null}
 
-        {/* Stats cards */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{stats.sessionsPlayed}</Text>
             <Text style={styles.statLabel}>Sessions Played</Text>
           </View>
+
           <View style={styles.statCard}>
-            <Text style={[styles.statValue, stats.totalNet >= 0 ? styles.positive : styles.negative]}>
+            <Text
+              style={[
+                styles.statValue,
+                stats.totalNet >= 0 ? styles.positive : styles.negative,
+              ]}
+            >
               {formatNet(stats.totalNet)}
             </Text>
             <Text style={styles.statLabel}>Total Net</Text>
           </View>
+
           <View style={styles.statCard}>
             <Text style={[styles.statValue, styles.positive]}>
               {formatNet(stats.biggestWin)}
             </Text>
             <Text style={styles.statLabel}>Biggest Win</Text>
           </View>
+
           <View style={styles.statCard}>
             <Text style={[styles.statValue, styles.negative]}>
               {formatNet(stats.biggestLoss)}
@@ -186,8 +204,14 @@ export default function ProfileScreen({ navigation: _navigation }: Props) {
                   <Text style={styles.sessionCode}>{item.sessionCode}</Text>
                   <Text style={styles.sessionDate}>{formatDate(item.date)}</Text>
                 </View>
+
                 <View style={styles.sessionRight}>
-                  <Text style={[styles.sessionNet, item.net >= 0 ? styles.positive : styles.negative]}>
+                  <Text
+                    style={[
+                      styles.sessionNet,
+                      item.net >= 0 ? styles.positive : styles.negative,
+                    ]}
+                  >
                     {formatNet(item.net)}
                   </Text>
                   <Text style={styles.sessionPlayers}>{item.playerCount} players</Text>
@@ -206,21 +230,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   content: {
     flex: 1,
     paddingHorizontal: 24,
     paddingTop: 24,
   },
+
+  header: {
+    marginBottom: 10,
+  },
+
+  backButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+
+  backText: {
+    color: colors.placeholder,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
   },
+
   title: {
     fontSize: 32,
     fontWeight: '800',
@@ -228,14 +272,17 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     flex: 1,
   },
+
   editIconBtn: {
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
+
   editIcon: {
     fontSize: 22,
     color: colors.placeholder,
   },
+
   nameInput: {
     flex: 1,
     fontSize: 28,
@@ -246,26 +293,31 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     letterSpacing: 1,
   },
+
   editActionBtn: {
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
+
   editActionText: {
     fontSize: 22,
     color: colors.text,
   },
+
   editErrorText: {
     color: '#F44336',
     fontSize: 13,
     marginBottom: 12,
     marginTop: -12,
   },
+
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
     marginBottom: 24,
   },
+
   statCard: {
     flex: 1,
     minWidth: '45%',
@@ -276,23 +328,28 @@ const styles = StyleSheet.create({
     padding: 12,
     alignItems: 'center',
   },
+
   statValue: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.text,
     marginBottom: 4,
   },
+
   statLabel: {
     fontSize: 11,
     color: colors.placeholder,
     textAlign: 'center',
   },
+
   positive: {
     color: '#4CAF50',
   },
+
   negative: {
     color: '#F44336',
   },
+
   sectionLabel: {
     fontSize: 16,
     fontWeight: '700',
@@ -300,11 +357,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     letterSpacing: 0.5,
   },
+
   emptyText: {
     color: colors.placeholder,
     fontSize: 15,
     textAlign: 'center',
   },
+
   sessionRow: {
     backgroundColor: colors.inputBackground,
     borderRadius: 8,
@@ -316,27 +375,33 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+
   sessionMain: {
     flex: 1,
   },
+
   sessionCode: {
     color: colors.text,
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 2,
   },
+
   sessionDate: {
     color: colors.placeholder,
     fontSize: 12,
   },
+
   sessionRight: {
     alignItems: 'flex-end',
   },
+
   sessionNet: {
     fontSize: 15,
     fontWeight: '700',
     marginBottom: 2,
   },
+
   sessionPlayers: {
     color: colors.placeholder,
     fontSize: 12,

@@ -13,7 +13,7 @@ class UserModel {
     this.username = username;
     this.email = email;
     this.password = password;
-    this.avatar = avatar;
+    this.avatar = avatar ?? null;
   }
 
   async save(): Promise<void> {

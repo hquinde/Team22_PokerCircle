@@ -40,6 +40,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
   const [isHost, setIsHost] = useState(false);
   const previousPlayersRef = useRef<LobbyPlayer[]>([]);
   const resolvedPlayerNameRef = useRef('');
+  const resolvedAvatarRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -90,6 +91,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
       socket.emit('session:joinRoom', {
         sessionCode,
         playerName: resolvedPlayerNameRef.current,
+        avatar: resolvedAvatarRef.current,
       });
     };
 
@@ -98,6 +100,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
       socket.emit('session:joinRoom', {
         sessionCode,
         playerName: resolvedPlayerNameRef.current,
+        avatar: resolvedAvatarRef.current,
       });
     };
 
@@ -118,12 +121,13 @@ export default function LobbyScreen({ route, navigation }: Props) {
           return;
         }
 
-        const authData = (await authRes.json()) as { userID: string; username: string };
+        const authData = (await authRes.json()) as { userID: string; username: string; avatar?: string | null };
         const myUserId = authData.userID;
         const playerName = authData.username;
 
         if (!active) return;
         resolvedPlayerNameRef.current = playerName;
+        resolvedAvatarRef.current = authData.avatar ?? null;
 
         try {
           const joinRes = await fetch(`${BACKEND_URL}/api/sessions/${sessionCode}/join`, {
@@ -159,6 +163,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
           socket.emit('session:joinRoom', {
             sessionCode,
             playerName: resolvedPlayerNameRef.current,
+            avatar: resolvedAvatarRef.current,
           });
         }
       } catch (err) {

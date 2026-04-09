@@ -58,14 +58,14 @@ export default function ProfileScreen({ navigation }: Props) {
         credentials: 'include',
       });
       if (!meRes.ok) throw new Error('Not authenticated');
-      const me = (await meRes.json()) as { userId: number; username: string; avatar?: string | null };
+      const me = (await meRes.json()) as { userID: string; username: string; avatar?: string | null };
 
       const [fetchedStats, fetchedSessions] = await Promise.all([
-        getUserStats(me.userId),
-        getUserSessions(me.userId),
+        getUserStats(me.userID as any),
+        getUserSessions(me.userID as any),
       ]);
 
-      setUserId(me.userId);
+      setUserId(me.userID as any);
       setUsername(me.username);
       setAvatar(me.avatar ?? null);
       setStats(fetchedStats);

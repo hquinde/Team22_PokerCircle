@@ -8,6 +8,7 @@ import { colors } from '../theme/colors';
 import { BACKEND_URL } from '../config/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
+import AvatarDisplay from '../components/AvatarDisplay';
 
 type Props = StackScreenProps<RootStackParamList, 'Lobby'>;
 
@@ -15,6 +16,7 @@ type LobbyPlayer = {
   playerId: string;
   name: string;
   isReady: boolean;
+  avatar?: string | null;
 };
 
 type LobbyUpdatePayload = {
@@ -316,9 +318,12 @@ export default function LobbyScreen({ route, navigation }: Props) {
 
           return (
             <View style={styles.playerRow}>
-              <View>
-                <Text style={styles.playerName}>{item.name}</Text>
-                <Text style={styles.playerLabel}>Player {index + 1}</Text>
+              <View style={styles.playerLeft}>
+                <AvatarDisplay avatarId={item.avatar} size={36} />
+                <View style={styles.playerInfo}>
+                  <Text style={styles.playerName}>{item.name}</Text>
+                  <Text style={styles.playerLabel}>Player {index + 1}</Text>
+                </View>
               </View>
 
               {isMe ? (
@@ -501,4 +506,6 @@ const styles = StyleSheet.create({
   },
   inviteButtonPressed: { opacity: 0.85 },
   inviteButtonText: { color: colors.text, fontSize: 15, fontWeight: '600' },
+  playerLeft: { flexDirection: 'row', alignItems: 'center' },
+  playerInfo: { marginLeft: 10 },
 });

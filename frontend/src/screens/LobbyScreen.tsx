@@ -8,6 +8,7 @@ import { colors } from '../theme/colors';
 import { BACKEND_URL } from '../config/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
+import AvatarDisplay from '../components/AvatarDisplay';
 
 type Props = StackScreenProps<RootStackParamList, 'Lobby'>;
 
@@ -15,6 +16,7 @@ type LobbyPlayer = {
   playerId: string;
   name: string;
   isReady: boolean;
+  avatar?: string | null;
 };
 
 type LobbyUpdatePayload = {
@@ -33,11 +35,14 @@ export default function LobbyScreen({ route, navigation }: Props) {
   const [startError, setStartError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
+  const [buyInAmount, setBuyInAmount] = useState(0);
+  const [maxRebuys, setMaxRebuys] = useState(0);
   const [joinMessage, setJoinMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isHost, setIsHost] = useState(false);
   const previousPlayersRef = useRef<LobbyPlayer[]>([]);
   const resolvedPlayerNameRef = useRef('');
+  const resolvedAvatarRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -65,7 +70,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
 
     const handleGameStart = (payload: GameStartPayload) => {
       if (!active) return;
-      navigation.replace('Game', { sessionCode: payload.sessionCode });
+      navigation.replace('Game', { sessionCode: payload.sessionCode, buyInAmount });
     };
 
     const handleSocketError = (payload: { message: string }) => {
@@ -88,6 +93,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
       socket.emit('session:joinRoom', {
         sessionCode,
         playerName: resolvedPlayerNameRef.current,
+        avatar: resolvedAvatarRef.current,
       });
     };
 
@@ -96,6 +102,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
       socket.emit('session:joinRoom', {
         sessionCode,
         playerName: resolvedPlayerNameRef.current,
+        avatar: resolvedAvatarRef.current,
       });
     };
 
@@ -116,12 +123,13 @@ export default function LobbyScreen({ route, navigation }: Props) {
           return;
         }
 
-        const authData = (await authRes.json()) as { userID: string; username: string };
+        const authData = (await authRes.json()) as { userID: string; username: string; avatar?: string | null };
         const myUserId = authData.userID;
         const playerName = authData.username;
 
         if (!active) return;
         resolvedPlayerNameRef.current = playerName;
+        resolvedAvatarRef.current = authData.avatar ?? null;
 
         try {
           const joinRes = await fetch(`${BACKEND_URL}/api/sessions/${sessionCode}/join`, {
@@ -140,7 +148,11 @@ export default function LobbyScreen({ route, navigation }: Props) {
 
         try {
           const session = await getSession(sessionCode);
-          if (active) setIsHost(session.hostUserId === myUserId);
+          if (active) {
+            setIsHost(session.hostUserId === myUserId);
+            setBuyInAmount(session.buyInAmount ?? 0);
+            setMaxRebuys(session.maxRebuys ?? 0);
+          }
         } catch (err) {
           console.error('LobbyScreen: Error fetching session:', err);
         }
@@ -157,6 +169,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
           socket.emit('session:joinRoom', {
             sessionCode,
             playerName: resolvedPlayerNameRef.current,
+            avatar: resolvedAvatarRef.current,
           });
         }
       } catch (err) {
@@ -288,6 +301,17 @@ export default function LobbyScreen({ route, navigation }: Props) {
         </Text>
       </View>
 
+      {(buyInAmount > 0 || maxRebuys > 0) && (
+        <View style={styles.rulesCard}>
+          {buyInAmount > 0 && (
+            <Text style={styles.ruleText}>Buy-in: ${buyInAmount}</Text>
+        )}
+        <Text style={styles.ruleText}>
+          Rebuys: {maxRebuys === 0 ? 'Unlimited' : `Max ${maxRebuys}`}
+        </Text>
+      </View>
+    )}
+
       {isJoining && (
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>Joining lobby...</Text>
@@ -316,9 +340,12 @@ export default function LobbyScreen({ route, navigation }: Props) {
 
           return (
             <View style={styles.playerRow}>
-              <View>
-                <Text style={styles.playerName}>{item.name}</Text>
-                <Text style={styles.playerLabel}>Player {index + 1}</Text>
+              <View style={styles.playerLeft}>
+                <AvatarDisplay avatarId={item.avatar} size={36} />
+                <View style={styles.playerInfo}>
+                  <Text style={styles.playerName}>{item.name}</Text>
+                  <Text style={styles.playerLabel}>Player {index + 1}</Text>
+                </View>
               </View>
 
               {isMe ? (
@@ -501,4 +528,23 @@ const styles = StyleSheet.create({
   },
   inviteButtonPressed: { opacity: 0.85 },
   inviteButtonText: { color: colors.text, fontSize: 15, fontWeight: '600' },
+  playerLeft: { flexDirection: 'row', alignItems: 'center' },
+  playerInfo: { marginLeft: 10 },
+  rulesCard: {
+  marginHorizontal: 16,
+  marginBottom: 12,
+  paddingVertical: 10,
+  paddingHorizontal: 14,
+  borderRadius: 8,
+  backgroundColor: colors.inputBackground,
+  borderWidth: 1,
+  borderColor: colors.inputBorder,
+  alignItems: 'center',
+},
+ruleText: {
+  color: colors.text,
+  fontSize: 14,
+  fontWeight: '600',
+  marginVertical: 2,
+},
 });

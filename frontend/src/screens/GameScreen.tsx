@@ -20,6 +20,7 @@ import { socket } from '../services/socket';
 import { BACKEND_URL } from '../config/api';
 import type { Player } from '../types/session';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AvatarDisplay from '../components/AvatarDisplay';
 
 type Props = StackScreenProps<RootStackParamList, 'Game'>;
 
@@ -31,18 +32,48 @@ export default function GameScreen({ route, navigation }: Props) {
   const [isEnding, setIsEnding] = useState(false);
   const [loading, setLoading] = useState(true);
   const [myPlayerName, setMyPlayerName] = useState<string | null>(null);
+  const [buyInAmount, setBuyInAmount] = useState(0);
+  const [maxRebuys, setMaxRebuys] = useState(0);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Financial inputs for the current player
   const [buyIn, setBuyIn] = useState('');
   const [rebuy, setRebuy] = useState('');
   const [cashOut, setCashOut] = useState('');
   const [isUpdatingFinances, setIsUpdatingFinances] = useState(false);
+  const [financeError, setFinanceError] = useState<string | null>(null);
 
-  // -------------------------------------------------------------------------
-  // Initialization: Auth, Session, and Socket
-  // -------------------------------------------------------------------------
+  // Use a ref so socket event handlers always see the latest player name
+  const myPlayerNameRef = useRef<string | null>(null);
+  const sessionCodeRef = useRef(sessionCode);
+
   useEffect(() => {
     let active = true;
+
+    const handleConnect = () => {
+      if (myPlayerNameRef.current) {
+        socket.emit('session:joinRoom', {
+          sessionCode: sessionCodeRef.current,
+          playerName: myPlayerNameRef.current,
+        });
+      }
+    };
+
+    const handleFinanceUpdate = (payload: { sessionCode: string; players: Player[] }) => {
+      if (active && payload.sessionCode === sessionCodeRef.current) {
+        setPlayers(payload.players);
+      }
+    };
+
+    const handleComplete = (payload: { sessionCode: string }) => {
+      if (active) {
+        navigation.replace('Results', { sessionCode: payload.sessionCode });
+      }
+    };
+
+    // Attach handlers BEFORE connecting
+    socket.on('connect', handleConnect);
+    socket.on('finance:update', handleFinanceUpdate);
+    socket.on('game:complete', handleComplete);
 
     async function init() {
       try {
@@ -57,29 +88,40 @@ export default function GameScreen({ route, navigation }: Props) {
         }
 
         const auth = await authRes.json() as { userID: string; username: string };
-        
+
+        myPlayerNameRef.current = auth.username;
+
         if (active) {
           setMyPlayerName(auth.username);
           setIsHost(auth.userID === sessionRes.hostUserId);
           setPlayers(sessionRes.players);
-          
-          // Pre-fill my own finances if they exist
-          const me = sessionRes.players.find(p => p.displayName === auth.username);
+          setBuyInAmount(sessionRes.buyInAmount ?? 0);
+          setMaxRebuys(sessionRes.maxRebuys ?? 0);
+
+          // Pre-fill my finances from existing session data
+          const me = sessionRes.players.find(
+            (p) => (p.displayName ?? p.name) === auth.username
+          );
           if (me) {
-            setBuyIn(me.buyIn.toString());
-            setRebuy(me.rebuyTotal.toString());
-            setCashOut(me.cashOut > 0 ? me.cashOut.toString() : '');
+            if (me.buyIn > 0) {
+              setBuyIn(me.buyIn.toString());
+            } else if (sessionRes.buyInAmount > 0) {
+              setBuyIn(sessionRes.buyInAmount.toString());
+            }
+            if (me.rebuyTotal > 0) setRebuy(me.rebuyTotal.toString());
+            if (me.cashOut > 0) setCashOut(me.cashOut.toString());
+          } else if (sessionRes.buyInAmount > 0) {
+            setBuyIn(sessionRes.buyInAmount.toString());
           }
-          
+
           setLoading(false);
         }
 
-        // Socket setup
-        socket.connect();
-        socket.emit('session:joinRoom', {
-          sessionCode,
-          playerName: auth.username,
-        });
+        if (socket.connected) {
+          handleConnect();
+        } else {
+          socket.connect();
+        }
       } catch (err) {
         console.error('GameScreen init error:', err);
         if (active) setLoading(false);
@@ -88,21 +130,9 @@ export default function GameScreen({ route, navigation }: Props) {
 
     void init();
 
-    const handleFinanceUpdate = (payload: { sessionCode: string; players: Player[] }) => {
-      if (active && payload.sessionCode === sessionCode) {
-        setPlayers(payload.players);
-      }
-    };
-
-    const handleComplete = (payload: { sessionCode: string }) => {
-      if (active) navigation.replace('Results', { sessionCode: payload.sessionCode });
-    };
-
-    socket.on('finance:update', handleFinanceUpdate);
-    socket.on('game:complete', handleComplete);
-
     return () => {
       active = false;
+      socket.off('connect', handleConnect);
       socket.off('finance:update', handleFinanceUpdate);
       socket.off('game:complete', handleComplete);
     };
@@ -112,59 +142,85 @@ export default function GameScreen({ route, navigation }: Props) {
   // Actions
   // -------------------------------------------------------------------------
   async function handleUpdateFinances() {
-    if (!myPlayerName) return;
-    
+    if (!myPlayerNameRef.current) return;
+
+    setFinanceError(null);
+
+    const buyInVal = buyIn ? parseFloat(buyIn) : 0;
+    const rebuyVal = rebuy ? parseFloat(rebuy) : 0;
+    const cashOutVal = cashOut ? parseFloat(cashOut) : 0;
+
+    if (maxRebuys > 0 && buyInAmount > 0 && rebuyVal > 0) {
+      const impliedCount = Math.round(rebuyVal / buyInAmount);
+      if (impliedCount > maxRebuys) {
+        setFinanceError(`Max rebuys is ${maxRebuys}. You cannot exceed that limit.`);
+        return;
+      }
+    }
+
     setIsUpdatingFinances(true);
     try {
-      await updatePlayerFinances(sessionCode, myPlayerName, {
-        buyIn: buyIn ? parseFloat(buyIn) : 0,
-        rebuyTotal: rebuy ? parseFloat(rebuy) : 0,
-        cashOut: cashOut ? parseFloat(cashOut) : 0,
+      await updatePlayerFinances(sessionCode, myPlayerNameRef.current, {
+        buyIn: buyInVal,
+        rebuyTotal: rebuyVal,
+        cashOut: cashOutVal,
       });
-      // The local state will be updated via the socket event 'finance:update'
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+      // Player list will update via 'finance:update' socket event
     } catch (err: unknown) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update finances');
+      const msg = err instanceof Error ? err.message : 'Failed to update finances';
+      setFinanceError(msg);
     } finally {
       setIsUpdatingFinances(false);
     }
   }
 
   async function handleEndSession() {
-    Alert.alert(
-      'End Session',
-      'This will finalise all results and show the settlement screen to everyone. Are you sure?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'End Session',
-          style: 'destructive',
-          onPress: async () => {
-            setIsEnding(true);
-            try {
-              await completeSession(sessionCode);
-            } catch (err: unknown) {
-              Alert.alert(
-                'Error',
-                err instanceof Error ? err.message : 'Could not end the session'
-              );
-              setIsEnding(false);
-            }
-          },
-        },
-      ]
-    );
+    const confirmed = Platform.OS === 'web'
+      ? window.confirm('This will finalise all results and show the settlement screen to everyone. Are you sure?')
+      : await new Promise<boolean>((resolve) => {
+          Alert.alert(
+            'End Session',
+            'This will finalise all results and show the settlement screen to everyone. Are you sure?',
+            [
+              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'End Session', style: 'destructive', onPress: () => resolve(true) },
+            ]
+          );
+        });
+  
+    if (!confirmed) return;
+  
+    setIsEnding(true);
+    try {
+      await completeSession(sessionCode);
+      setTimeout(() => {
+        navigation.replace('Results', { sessionCode });
+      }, 3000);
+    } catch (err: unknown) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Could not end the session');
+      setIsEnding(false);
+    }
   }
 
   if (loading) return <LoadingSpinner message="Loading game..." />;
 
   const renderPlayer = ({ item }: { item: Player }) => {
-    const isMe = item.displayName === myPlayerName;
+    const displayName = item.displayName ?? item.name ?? '';
+    const isMe = displayName === myPlayerName;
     const hasCashedOut = item.cashOut > 0;
+    const totalIn = item.buyIn + item.rebuyTotal;
 
     return (
       <View style={[styles.playerCard, isMe && styles.myPlayerCard]}>
         <View style={styles.playerHeader}>
-          <Text style={styles.playerName}>{item.displayName} {isMe && '(You)'}</Text>
+          <View style={styles.playerNameRow}>
+            <AvatarDisplay avatarId={item.avatar} size={36} />
+            <Text style={[styles.playerName, { marginLeft: 10 }]}>
+              {displayName} {isMe && '(You)'}
+            </Text>
+          </View>
           {hasCashedOut ? (
             <View style={styles.confirmedBadge}>
               <Text style={styles.confirmedText}>CASHED OUT</Text>
@@ -173,9 +229,31 @@ export default function GameScreen({ route, navigation }: Props) {
             <Text style={styles.activeText}>In Play</Text>
           )}
         </View>
+
         <View style={styles.playerStats}>
-          <Text style={styles.statText}>Total In: ${item.buyIn + item.rebuyTotal}</Text>
-          {hasCashedOut && <Text style={styles.statText}>Out: ${item.cashOut}</Text>}
+          {totalIn > 0 && (
+            <Text style={styles.statText}>
+              Total In: <Text style={styles.statAmount}>${totalIn}</Text>
+            </Text>
+          )}
+          {item.rebuyTotal > 0 && (
+            <Text style={styles.statText}>
+              Rebuys: <Text style={styles.statAmount}>${item.rebuyTotal}</Text>
+            </Text>
+          )}
+          {hasCashedOut && (
+            <Text style={styles.statText}>
+              Cash-out: <Text style={styles.statAmount}>${item.cashOut}</Text>
+            </Text>
+          )}
+          {hasCashedOut && totalIn > 0 && (
+            <Text style={[
+              styles.statText,
+              item.cashOut - totalIn >= 0 ? styles.positive : styles.negative
+            ]}>
+              Net: {item.cashOut - totalIn >= 0 ? '+' : ''}${item.cashOut - totalIn}
+            </Text>
+          )}
         </View>
       </View>
     );
@@ -183,7 +261,7 @@ export default function GameScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
@@ -194,61 +272,89 @@ export default function GameScreen({ route, navigation }: Props) {
           </View>
         </View>
 
+        {(buyInAmount > 0 || maxRebuys > 0) && (
+          <View style={styles.rulesCard}>
+            {buyInAmount > 0 && (
+              <Text style={styles.ruleText}>Buy-in: ${buyInAmount}</Text>
+            )}
+            <Text style={styles.ruleText}>
+              Rebuys: {maxRebuys === 0 ? 'Unlimited' : `Max ${maxRebuys}`}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.content}>
-          <Text style={styles.sectionTitle}>Players Status</Text>
+          <Text style={styles.sectionTitle}>Players ({players.length})</Text>
           <FlatList
             data={players}
             renderItem={renderPlayer}
-            keyExtractor={(p) => p.playerId || p.displayName || Math.random().toString()}
+            keyExtractor={(p) =>
+              p.playerId || (p.displayName ?? p.name) || Math.random().toString()
+            }
             contentContainerStyle={styles.playerList}
+            scrollEnabled={false}
           />
 
           <View style={styles.myActions}>
             <Text style={styles.sectionTitle}>Your Finances</Text>
+            <Text style={styles.financeHint}>
+              Enter your totals and tap "Confirm" — you can update any time.
+            </Text>
             <View style={styles.inputRow}>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Buy-in</Text>
+                <Text style={styles.inputLabel}>Buy-in ($)</Text>
                 <TextInput
                   style={styles.input}
                   value={buyIn}
-                  onChangeText={setBuyIn}
+                  onChangeText={(v) => { setBuyIn(v); setFinanceError(null); }}
                   keyboardType="numeric"
-                  placeholder="0"
+                  placeholder={buyInAmount > 0 ? String(buyInAmount) : '0'}
                   placeholderTextColor={colors.placeholder}
                 />
               </View>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Rebuys</Text>
+                <Text style={styles.inputLabel}>Rebuys ($)</Text>
                 <TextInput
                   style={styles.input}
                   value={rebuy}
-                  onChangeText={setRebuy}
+                  onChangeText={(v) => { setRebuy(v); setFinanceError(null); }}
                   keyboardType="numeric"
                   placeholder="0"
                   placeholderTextColor={colors.placeholder}
                 />
               </View>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Cash-out</Text>
+                <Text style={styles.inputLabel}>Cash-out ($)</Text>
                 <TextInput
                   style={styles.input}
                   value={cashOut}
-                  onChangeText={setCashOut}
+                  onChangeText={(v) => { setCashOut(v); setFinanceError(null); }}
                   keyboardType="numeric"
                   placeholder="0"
                   placeholderTextColor={colors.placeholder}
                 />
               </View>
             </View>
+
+            {financeError && (
+              <Text style={styles.errorText}>{financeError}</Text>
+            )}
+
             <Pressable
-              style={[styles.updateButton, isUpdatingFinances && styles.buttonDisabled]}
+              style={[
+                styles.updateButton,
+                isUpdatingFinances && styles.buttonDisabled,
+                saveSuccess && styles.updateButtonSuccess,
+              ]}
               onPress={handleUpdateFinances}
               disabled={isUpdatingFinances}
             >
               {isUpdatingFinances ? (
                 <ActivityIndicator color={colors.textOnPrimary} />
               ) : (
-                <Text style={styles.updateButtonText}>Confirm My Totals</Text>
+                <Text style={styles.updateButtonText}>
+                  {saveSuccess ? '✓ Saved!' : 'Confirm My Totals'}
+                </Text>
               )}
             </Pressable>
           </View>
@@ -262,7 +368,9 @@ export default function GameScreen({ route, navigation }: Props) {
               {isEnding ? (
                 <ActivityIndicator color={colors.textOnPrimary} />
               ) : (
-                <Text style={styles.endButtonText}>End Session &amp; See Results</Text>
+                <Text style={styles.endButtonText}>
+                  End Session &amp; See Results
+                </Text>
               )}
             </Pressable>
           )}
@@ -276,36 +384,68 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { alignItems: 'center', paddingVertical: 10 },
   content: { flex: 1, paddingHorizontal: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 12, marginTop: 10 },
-  playerList: { paddingBottom: 20 },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+    marginTop: 10,
+  },
+  financeHint: {
+    fontSize: 12,
+    color: colors.placeholder,
+    marginBottom: 12,
+  },
+  playerList: { paddingBottom: 8 },
   playerCard: {
     backgroundColor: colors.inputBackground,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
+    padding: 14,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: colors.inputBorder,
   },
   myPlayerCard: { borderColor: colors.primary, borderWidth: 1.5 },
-  playerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  playerName: { fontSize: 16, fontWeight: '600', color: colors.text },
-  activeText: { fontSize: 12, color: colors.primary, fontWeight: '700' },
-  confirmedBadge: { backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
-  confirmedText: { fontSize: 10, color: colors.textOnPrimary, fontWeight: '800' },
-  playerStats: { flexDirection: 'row', gap: 15 },
-  statText: { fontSize: 14, color: colors.placeholder },
-  
+  playerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  playerNameRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  playerName: { fontSize: 15, fontWeight: '600', color: colors.text, flex: 1 },
+  activeText: { fontSize: 11, color: colors.placeholder, fontWeight: '600' },
+  confirmedBadge: {
+    backgroundColor: '#2E7D32',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  confirmedText: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  playerStats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  statText: { fontSize: 13, color: colors.placeholder },
+  statAmount: { color: colors.text, fontWeight: '600' },
+  positive: { color: '#4CAF50', fontWeight: '700' },
+  negative: { color: '#F44336', fontWeight: '700' },
   myActions: {
     backgroundColor: colors.inputBackground,
-    padding: 20,
+    padding: 16,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.inputBorder,
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  inputRow: { flexDirection: 'row', gap: 10, marginBottom: 15 },
+  inputRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   inputGroup: { flex: 1 },
-  inputLabel: { fontSize: 12, color: colors.placeholder, marginBottom: 5 },
+  inputLabel: { fontSize: 11, color: colors.placeholder, marginBottom: 4 },
   input: {
     backgroundColor: colors.background,
     borderWidth: 1,
@@ -314,6 +454,13 @@ const styles = StyleSheet.create({
     padding: 10,
     color: colors.text,
     fontSize: 16,
+    textAlign: 'center',
+  },
+  errorText: {
+    color: '#F44336',
+    fontSize: 13,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   updateButton: {
     backgroundColor: colors.primary,
@@ -321,18 +468,27 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  updateButtonText: { color: colors.textOnPrimary, fontWeight: '700', fontSize: 16 },
-  
+  updateButtonSuccess: {
+    backgroundColor: '#2E7D32',
+  },
+  updateButtonText: {
+    color: colors.textOnPrimary,
+    fontWeight: '700',
+    fontSize: 16,
+  },
   endButton: {
-    backgroundColor: '#F44336',
+    backgroundColor: '#C62828',
     borderRadius: 10,
     paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  endButtonText: { color: colors.textOnPrimary, fontWeight: '700', fontSize: 16 },
+  endButtonText: {
+    color: colors.textOnPrimary,
+    fontWeight: '700',
+    fontSize: 16,
+  },
   buttonDisabled: { opacity: 0.6 },
-
   codeBadge: {
     alignItems: 'center',
     backgroundColor: colors.inputBackground,
@@ -342,6 +498,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.inputBorder,
   },
-  codeLabel: { fontSize: 10, color: colors.placeholder, letterSpacing: 2, marginBottom: 2 },
-  code: { fontSize: 20, fontWeight: '800', color: colors.primary, letterSpacing: 4 },
+  codeLabel: {
+    fontSize: 10,
+    color: colors.placeholder,
+    letterSpacing: 2,
+    marginBottom: 2,
+  },
+  code: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: 4,
+  },
+  rulesCard: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: colors.inputBackground,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  ruleText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '600',
+  },
 });

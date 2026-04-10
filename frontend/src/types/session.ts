@@ -15,6 +15,7 @@ export interface Player {
   buyIn: number;
   rebuyTotal: number;
   cashOut: number;
+  avatar?: string | null;
 }
 
 export interface Session {
@@ -22,5 +23,7 @@ export interface Session {
   createdAt: string;
   hostUserId: string;
   status: SessionStatus;
+  buyInAmount: number;
+  maxRebuys: number;
   players: Player[];
 }

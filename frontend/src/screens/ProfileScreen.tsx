@@ -129,152 +129,154 @@ export default function ProfileScreen({ navigation }: Props) {
     );
   }
 
+  const listHeader = (
+    <View style={styles.listHeader}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity onPress={() => setPickerVisible(true)} style={styles.avatarWrapper}>
+        <AvatarDisplay avatarId={avatar} size={72} />
+        <Text style={styles.avatarEditHint}>Tap to change</Text>
+      </TouchableOpacity>
+
+      <View style={styles.titleRow}>
+        {editMode ? (
+          <>
+            <TextInput
+              style={styles.nameInput}
+              value={editValue}
+              onChangeText={setEditValue}
+              autoFocus
+              maxLength={30}
+              returnKeyType="done"
+              onSubmitEditing={confirmEdit}
+            />
+            <TouchableOpacity
+              onPress={confirmEdit}
+              disabled={editLoading}
+              style={styles.editActionBtn}
+            >
+              <Text style={styles.editActionText}>✓</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={cancelEdit} style={styles.editActionBtn}>
+              <Text style={styles.editActionText}>✕</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Text style={styles.title}>{username}</Text>
+            <TouchableOpacity onPress={startEdit} style={styles.editIconBtn}>
+              <Text style={styles.editIcon}>✎</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+
+      {editError ? <Text style={styles.editErrorText}>{editError}</Text> : null}
+
+      <View style={styles.statsGrid}>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>{stats.sessionsPlayed}</Text>
+          <Text style={styles.statLabel}>Sessions Played</Text>
+        </View>
+
+        <View style={styles.statCard}>
+          <Text
+            style={[
+              styles.statValue,
+              stats.totalNet >= 0 ? styles.positive : styles.negative,
+            ]}
+          >
+            {formatNet(stats.totalNet)}
+          </Text>
+          <Text style={styles.statLabel}>Total Net</Text>
+        </View>
+
+        <View style={styles.statCard}>
+          <Text style={[styles.statValue, styles.positive]}>
+            {formatNet(stats.biggestWin)}
+          </Text>
+          <Text style={styles.statLabel}>Biggest Win</Text>
+        </View>
+
+        <View style={styles.statCard}>
+          <Text style={[styles.statValue, styles.negative]}>
+            {formatNet(stats.biggestLoss)}
+          </Text>
+          <Text style={styles.statLabel}>Biggest Loss</Text>
+        </View>
+      </View>
+
+      <Text style={styles.sectionLabel}>Session History</Text>
+
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Search sessions..."
+        placeholderTextColor={colors.placeholder}
+        value={searchText}
+        onChangeText={setSearchText}
+      />
+
+      <View style={styles.filterRow}>
+        {(['all', 'win', 'loss'] as const).map((f) => (
+          <TouchableOpacity
+            key={f}
+            onPress={() => setWinFilter(f)}
+            style={[styles.filterBtn, winFilter === f && styles.filterBtnActive]}
+          >
+            <Text style={[styles.filterBtnText, winFilter === f && styles.filterBtnTextActive]}>
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0D0D0D" />
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
-        </View>
+      <FlatList
+        data={filteredSessions}
+        keyExtractor={(item) => item.sessionCode}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+              {sessions.length === 0
+                ? 'No completed sessions yet'
+                : 'No sessions match your search'}
+            </Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.sessionRow}
+            onPress={() => navigation.navigate('SessionDetail', { sessionCode: item.sessionCode })}
+          >
+            <View style={styles.sessionMain}>
+              <Text style={styles.sessionCode}>{item.sessionCode}</Text>
+              <Text style={styles.sessionDate}>{formatDate(item.date)}</Text>
+            </View>
 
-        <TouchableOpacity onPress={() => setPickerVisible(true)} style={styles.avatarWrapper}>
-          <AvatarDisplay avatarId={avatar} size={72} />
-          <Text style={styles.avatarEditHint}>Tap to change</Text>
-        </TouchableOpacity>
-
-        <View style={styles.titleRow}>
-          {editMode ? (
-            <>
-              <TextInput
-                style={styles.nameInput}
-                value={editValue}
-                onChangeText={setEditValue}
-                autoFocus
-                maxLength={30}
-                returnKeyType="done"
-                onSubmitEditing={confirmEdit}
-              />
-              <TouchableOpacity
-                onPress={confirmEdit}
-                disabled={editLoading}
-                style={styles.editActionBtn}
+            <View style={styles.sessionRight}>
+              <Text
+                style={[
+                  styles.sessionNet,
+                  item.net >= 0 ? styles.positive : styles.negative,
+                ]}
               >
-                <Text style={styles.editActionText}>✓</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={cancelEdit} style={styles.editActionBtn}>
-                <Text style={styles.editActionText}>✕</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <Text style={styles.title}>{username}</Text>
-              <TouchableOpacity onPress={startEdit} style={styles.editIconBtn}>
-                <Text style={styles.editIcon}>✎</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-
-        {editError ? <Text style={styles.editErrorText}>{editError}</Text> : null}
-
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.sessionsPlayed}</Text>
-            <Text style={styles.statLabel}>Sessions Played</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Text
-              style={[
-                styles.statValue,
-                stats.totalNet >= 0 ? styles.positive : styles.negative,
-              ]}
-            >
-              {formatNet(stats.totalNet)}
-            </Text>
-            <Text style={styles.statLabel}>Total Net</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Text style={[styles.statValue, styles.positive]}>
-              {formatNet(stats.biggestWin)}
-            </Text>
-            <Text style={styles.statLabel}>Biggest Win</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Text style={[styles.statValue, styles.negative]}>
-              {formatNet(stats.biggestLoss)}
-            </Text>
-            <Text style={styles.statLabel}>Biggest Loss</Text>
-          </View>
-        </View>
-
-        <Text style={styles.sectionLabel}>Session History</Text>
-
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search sessions..."
-          placeholderTextColor={colors.placeholder}
-          value={searchText}
-          onChangeText={setSearchText}
-        />
-
-        <View style={styles.filterRow}>
-          {(['all', 'win', 'loss'] as const).map((f) => (
-            <TouchableOpacity
-              key={f}
-              onPress={() => setWinFilter(f)}
-              style={[styles.filterBtn, winFilter === f && styles.filterBtnActive]}
-            >
-              <Text style={[styles.filterBtnText, winFilter === f && styles.filterBtnTextActive]}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
+                {formatNet(item.net)}
               </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {sessions.length === 0 ? (
-          <View style={styles.centered}>
-            <Text style={styles.emptyText}>No completed sessions yet</Text>
-          </View>
-        ) : filteredSessions.length === 0 ? (
-          <View style={styles.centered}>
-            <Text style={styles.emptyText}>No sessions match your search</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={filteredSessions}
-            keyExtractor={(item) => item.sessionCode}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.sessionRow}
-                onPress={() => navigation.navigate('SessionDetail', { sessionCode: item.sessionCode })}
-              >
-                <View style={styles.sessionMain}>
-                  <Text style={styles.sessionCode}>{item.sessionCode}</Text>
-                  <Text style={styles.sessionDate}>{formatDate(item.date)}</Text>
-                </View>
-
-                <View style={styles.sessionRight}>
-                  <Text
-                    style={[
-                      styles.sessionNet,
-                      item.net >= 0 ? styles.positive : styles.negative,
-                    ]}
-                  >
-                    {formatNet(item.net)}
-                  </Text>
-                  <Text style={styles.sessionPlayers}>{item.playerCount} players</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          />
+              <Text style={styles.sessionPlayers}>{item.playerCount} players</Text>
+            </View>
+          </TouchableOpacity>
         )}
-      </View>
+      />
       <AvatarPickerModal
         visible={pickerVisible}
         currentAvatarId={avatar}
@@ -306,10 +308,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  content: {
-    flex: 1,
+  listContent: {
     paddingHorizontal: 24,
+    paddingBottom: 40,
+    flexGrow: 1,
+  },
+
+  listHeader: {
     paddingTop: 24,
+    paddingBottom: 8,
   },
 
   header: {
@@ -436,6 +443,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 12,
     letterSpacing: 0.5,
+  },
+
+  emptyContainer: {
+    alignItems: 'center',
+    paddingTop: 40,
   },
 
   emptyText: {

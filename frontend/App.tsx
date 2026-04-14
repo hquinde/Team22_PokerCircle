@@ -16,6 +16,7 @@ import ResultsScreen from './src/screens/ResultsScreen';
 import FriendsListScreen from './src/screens/FriendsListScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SessionDetailScreen from './src/screens/SessionDetailScreen';
+import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import { BACKEND_URL } from './src/config/api';
 import { loadAuth } from './src/services/authStorage';
 import { colors } from './src/theme/colors';
@@ -34,6 +35,7 @@ export type RootStackParamList = {
   SessionDetail: { sessionCode: string };
   FriendsList: undefined;
   Profile: undefined;
+  Leaderboard: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -137,7 +139,6 @@ export default function App() {
           },
           headerTintColor: colors.primary,
           headerTitle: '',
-          headerBackTitleVisible: false,
         }}
       >
         <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
@@ -156,6 +157,7 @@ export default function App() {
         <Stack.Screen name="FriendsList" component={FriendsListScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
         <Stack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

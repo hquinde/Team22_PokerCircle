@@ -14,6 +14,7 @@ import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { colors } from '../theme/colors';
 import { getUserStats, getUserSessions, updateDisplayName, updateAvatar } from '../api/api';
+import { exportSessionsToCSV } from '../utils/exportCSV';
 import { BACKEND_URL } from '../config/api';
 import type { UserStats, UserSession } from '../types/profile';
 import AvatarDisplay from '../components/AvatarDisplay';
@@ -53,6 +54,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const [editLoading, setEditLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [winFilter, setWinFilter] = useState<'all' | 'win' | 'loss'>('all');
+  const [exporting, setExporting] = useState(false);
 
   const filteredSessions = useMemo(() => {
     return sessions.filter((s) => {
@@ -101,6 +103,18 @@ export default function ProfileScreen({ navigation }: Props) {
   function cancelEdit() {
     setEditMode(false);
     setEditError('');
+  }
+
+  async function handleExport() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      await exportSessionsToCSV(sessions, username);
+    } catch {
+      // share sheet dismissed or unavailable — no user-visible error needed
+    } finally {
+      setExporting(false);
+    }
   }
 
   async function confirmEdit() {
@@ -274,6 +288,19 @@ export default function ProfileScreen({ navigation }: Props) {
             )}
           />
         )}
+        <TouchableOpacity
+          style={[styles.exportBtn, sessions.length === 0 && styles.exportBtnDisabled]}
+          onPress={handleExport}
+          disabled={sessions.length === 0 || exporting}
+        >
+          <Text style={[styles.exportBtnText, sessions.length === 0 && styles.exportBtnTextDisabled]}>
+            {sessions.length === 0
+              ? 'No sessions to export'
+              : exporting
+              ? 'Exporting...'
+              : 'Export Session History'}
+          </Text>
+        </TouchableOpacity>
       </View>
       <AvatarPickerModal
         visible={pickerVisible}
@@ -527,5 +554,30 @@ const styles = StyleSheet.create({
 
   filterBtnTextActive: {
     color: '#000',
+  },
+
+  exportBtn: {
+    marginTop: 16,
+    marginBottom: 8,
+    paddingVertical: 14,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+  },
+
+  exportBtnDisabled: {
+    backgroundColor: colors.inputBackground,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+  },
+
+  exportBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#000',
+  },
+
+  exportBtnTextDisabled: {
+    color: colors.placeholder,
   },
 });

@@ -528,4 +528,21 @@ const styles = StyleSheet.create({
   filterBtnTextActive: {
     color: '#000',
   },
+
+  ratingDisplayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+    marginTop: -12,
+  },
+  ratingStars: {
+    fontSize: 18,
+    color: '#FFC107',
+    letterSpacing: 2,
+  },
+  ratingText: {
+    fontSize: 13,
+    color: colors.placeholder,
+  },
 });

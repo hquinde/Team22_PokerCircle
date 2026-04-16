@@ -5,6 +5,42 @@ import { requireAuth } from "../middleware/requireAuth";
 import pool from "../db/pool";
 
 const router = Router();
+// GET /api/users/:userId
+// Returns public profile info + aggregate rating for a user
+router.get(
+  "/:userId",
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+
+    const result = await pool.query(
+      `SELECT
+        u."userID"       AS "userId",
+        u.username,
+        u.avatar,
+        COALESCE(AVG(pr.stars), 0)::float   AS "avgRating",
+        COUNT(pr.id)::int                   AS "ratingsCount"
+      FROM users u
+      LEFT JOIN player_ratings pr ON pr.rated_id = u."userID"
+      WHERE u."userID" = $1
+      GROUP BY u."userID", u.username, u.avatar`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const row = result.rows[0];
+    return res.json({
+      userId: row.userId,
+      username: row.username,
+      avatar: row.avatar ?? null,
+      avgRating: parseFloat(row.avgRating.toFixed(1)),
+      ratingsCount: row.ratingsCount,
+    });
+  })
+);
 
 // GET /api/users/:userId/stats
 // Returns aggregated all-time stats for a user from finished sessions

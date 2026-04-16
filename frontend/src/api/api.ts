@@ -362,3 +362,45 @@ export async function updateAvatar(userId: number, avatarId: string): Promise<st
   const data = await response.json() as { avatar: string };
   return data.avatar;
 }
+
+// ---------------------------------------------------------------------------
+// TM22-145: Ratings
+// ---------------------------------------------------------------------------
+
+export async function submitRating(
+  ratedUserId: string,
+  sessionId: string,
+  stars: number
+): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/api/ratings`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ratedUserId, sessionId, stars }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw new Error(body.error ?? 'Failed to submit rating');
+  }
+}
+
+export interface UserProfile {
+  userId: string;
+  username: string;
+  avatar: string | null;
+  avgRating: number;
+  ratingsCount: number;
+}
+
+export async function getUserProfile(userId: string): Promise<UserProfile> {
+  const response = await fetch(`${BACKEND_URL}/api/users/${userId}`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw Object.assign(new Error(body.error ?? 'Failed to fetch user profile'), {
+      statusCode: response.status,
+    });
+  }
+  return response.json() as Promise<UserProfile>;
+}

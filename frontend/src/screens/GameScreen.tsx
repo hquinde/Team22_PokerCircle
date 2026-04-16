@@ -32,19 +32,11 @@ function formatAmount(n: number) {
   })}`;
 }
 
-type PlayerCardProps = {
-  player: Player;
-  isMe: boolean;
-  canRemove: boolean;
-  onRemove: () => void;
-};
-
-function PlayerCard({ player, isMe, canRemove, onRemove }: PlayerCardProps) {
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-type PlayerCardProps = { player: Player; isMe: boolean; sessionBuyIn: number };
+type PlayerCardProps = { player: Player; isMe: boolean; sessionBuyIn: number; canRemove: boolean; onRemove: () => void };
 
-function PlayerCard({ player, isMe, sessionBuyIn }: PlayerCardProps) {
+function PlayerCard({ player, isMe, sessionBuyIn, canRemove, onRemove }: PlayerCardProps) {
   const displayName = player.displayName ?? player.name ?? '';
   const totalIn = player.buyIn + player.rebuyTotal;
   const hasCashedOut = player.cashOut > 0;
@@ -473,18 +465,12 @@ export default function GameScreen({ route, navigation }: Props) {
                 <PlayerCard
                   player={item}
                   isMe={isMe}
+                  sessionBuyIn={buyInAmount}
                   canRemove={canRemove}
                   onRemove={() => handleRemovePlayer(displayName)}
                 />
               );
             }}
-            renderItem={({ item }) => (
-              <PlayerCard
-                player={item}
-                isMe={(item.displayName ?? item.name) === myPlayerName}
-                sessionBuyIn={buyInAmount}
-              />
-            )}
             keyExtractor={(p) =>
               p.playerId || (p.displayName ?? p.name)?.trim() || Math.random().toString()
             }
@@ -1057,7 +1043,6 @@ const styles = StyleSheet.create({
   endButtonTextDisabled: {
     color: colors.placeholder,
   },
-});
   buttonPressed: {
     opacity: 0.85,
     transform: [{ scale: 0.97 }],

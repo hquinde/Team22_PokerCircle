@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import type { UserSession } from '../types/profile';
 
@@ -44,13 +44,10 @@ export async function exportSessionsToCSV(
   }
 
   const { csv, filename } = generateSessionCSV(sessions, username);
-  const fileUri = (FileSystem.cacheDirectory ?? '') + filename;
+  const file = new File(Paths.cache, filename);
+  file.write(csv);
 
-  await FileSystem.writeAsStringAsync(fileUri, csv, {
-    encoding: FileSystem.EncodingType.UTF8,
-  });
-
-  await Sharing.shareAsync(fileUri, {
+  await Sharing.shareAsync(file.uri, {
     mimeType: 'text/csv',
     dialogTitle: 'Export Session History',
   });

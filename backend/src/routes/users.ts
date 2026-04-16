@@ -51,6 +51,9 @@ router.get(
       `SELECT
         gs.session_code AS "sessionCode",
         gs.created_at AS "date",
+        sp.buy_in AS "buyIn",
+        sp.rebuy_total AS "rebuys",
+        sp.cash_out AS "cashOut",
         (sp.cash_out - sp.buy_in - sp.rebuy_total) AS "net",
         (SELECT COUNT(*)::int FROM session_players WHERE session_code = gs.session_code) AS "playerCount"
       FROM session_players sp
@@ -62,9 +65,12 @@ router.get(
     );
 
     res.json({
-      sessions: result.rows.map((row: { sessionCode: string; date: Date | string; net: string; playerCount: number }) => ({
+      sessions: result.rows.map((row: { sessionCode: string; date: Date | string; buyIn: string; rebuys: string; cashOut: string; net: string; playerCount: number }) => ({
         sessionCode: row.sessionCode,
         date: row.date instanceof Date ? row.date.toISOString() : row.date,
+        buyIn: parseFloat(row.buyIn),
+        rebuys: parseFloat(row.rebuys),
+        cashOut: parseFloat(row.cashOut),
         net: parseFloat(row.net),
         playerCount: row.playerCount,
       })),

@@ -154,6 +154,48 @@ router.get(
   })
 );
 
+// GET /api/users/:userId/active-session
+// Returns { sessionCode, buyInAmount, maxRebuys } if the user is a participant
+// in an in-progress session, or { sessionCode: null } if not.
+router.get(
+  "/:userId/active-session",
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+
+    // Auth guard: users can only query their own active session
+    if (String(req.session.userId) !== userId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const result = await pool.query(
+      `SELECT
+         gs.session_code  AS "sessionCode",
+         gs.buy_in_amount AS "buyInAmount",
+         gs.max_rebuys    AS "maxRebuys"
+       FROM session_players sp
+       JOIN game_sessions gs ON gs.session_code = sp.session_code
+       JOIN users u ON u.username = sp.display_name
+       WHERE u.user_id = $1
+         AND gs.status = 'active'
+       ORDER BY sp.joined_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ sessionCode: null });
+    }
+
+    const row = result.rows[0];
+    return res.json({
+      sessionCode: row.sessionCode,
+      buyInAmount: row.buyInAmount ?? 0,
+      maxRebuys: row.maxRebuys ?? 0,
+    });
+  })
+);
+
 // PATCH /api/users/:userId/displayname
 // Updates the display name (username) for a user
 router.patch(

@@ -20,7 +20,9 @@ import {
   respondToInvite,
   getPendingFriendRequests,
   respondToFriendRequest,
+  getActiveSession,
 } from '../api/api';
+import type { ActiveSessionInfo } from '../api/api';
 import { socket } from '../services/socket';
 import { BACKEND_URL } from '../config/api';
 import { clearAuth } from '../services/authStorage';
@@ -48,8 +50,12 @@ export default function HomeScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [screenError, setScreenError] = useState<string | null>(null);
 
+  // TM22-146: active session rejoin
+  const [activeSession, setActiveSession] = useState<ActiveSessionInfo | null>(null);
+
   const userIdRef = useRef<string | null>(null);
 
+  // ── Socket listeners ─────────────────────────────────────────────────────
   useEffect(() => {
     const handleUserConnect = () => {
       if (userIdRef.current) {
@@ -64,15 +70,27 @@ export default function HomeScreen({ navigation }: Props) {
       });
     };
 
+    // TM22-146: if the active session ends while the user is on Home,
+    // dismiss the banner automatically.
+    const handleGameComplete = (payload: { sessionCode: string }) => {
+      setActiveSession((prev) => {
+        if (prev?.sessionCode === payload.sessionCode) return null;
+        return prev;
+      });
+    };
+
     socket.on('connect', handleUserConnect);
     socket.on('user:invite', handleNewInvite);
+    socket.on('game:complete', handleGameComplete);
 
     return () => {
       socket.off('connect', handleUserConnect);
       socket.off('user:invite', handleNewInvite);
+      socket.off('game:complete', handleGameComplete);
     };
   }, []);
 
+  // ── Initial load + focus refresh ─────────────────────────────────────────
   useEffect(() => {
     loadHomeData();
   }, []);
@@ -81,11 +99,11 @@ export default function HomeScreen({ navigation }: Props) {
     const unsubscribe = navigation.addListener('focus', () => {
       loadHomeData(false);
     });
-
     return unsubscribe;
   }, [navigation]);
 
-  async function loadCurrentUser() {
+  // ── Data loading ─────────────────────────────────────────────────────────
+  async function loadCurrentUser(): Promise<string> {
     const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
       credentials: 'include',
     });
@@ -102,6 +120,8 @@ export default function HomeScreen({ navigation }: Props) {
     if (socket.connected) {
       socket.emit('user:joinRoom', data.userID);
     }
+
+    return data.userID;
   }
 
   async function loadInvites() {
@@ -119,14 +139,19 @@ export default function HomeScreen({ navigation }: Props) {
       if (showSpinner) {
         setLoading(true);
       }
-
       setScreenError(null);
 
-      await Promise.all([
-        loadCurrentUser(),
+      // Load user first so we have their ID for the active-session check
+      const userId = await loadCurrentUser();
+
+      // Run the remaining calls in parallel
+      const [, , activeSess] = await Promise.all([
         loadInvites(),
         loadFriendRequests(),
+        getActiveSession(userId).catch(() => null), // non-fatal
       ]);
+
+      setActiveSession(activeSess?.sessionCode ? activeSess : null);
     } catch (err) {
       console.error('HomeScreen load error:', err);
       setScreenError('Could not connect — check your connection');
@@ -137,10 +162,7 @@ export default function HomeScreen({ navigation }: Props) {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Subtask 4: clear persisted auth on logout so the next app launch correctly
-  // shows the Login screen instead of auto-navigating to Home.
-  // ---------------------------------------------------------------------------
+  // ── Handlers ─────────────────────────────────────────────────────────────
   async function handleLogout() {
     setLoggingOut(true);
     try {
@@ -151,14 +173,11 @@ export default function HomeScreen({ navigation }: Props) {
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
-      // Clear the persisted token regardless of whether the server call
-      // succeeded — stale local state should never block the user from
-      // reaching the Login screen.
       await clearAuth();
-
       socket.disconnect();
       userIdRef.current = null;
       setUsername(null);
+      setActiveSession(null);
       setLoggingOut(false);
       navigation.reset({
         index: 0,
@@ -173,7 +192,6 @@ export default function HomeScreen({ navigation }: Props) {
   ) {
     setRespondingToRequest(request.id);
     setRespondError(null);
-
     try {
       await respondToFriendRequest(request.id, action);
       setFriendRequests((prev) => prev.filter((r) => r.id !== request.id));
@@ -185,40 +203,37 @@ export default function HomeScreen({ navigation }: Props) {
     }
   }
 
-async function handleCreateSession() {
-  setCreateError(null);
-  setCreating(true);
-  setShowCreateModal(false);
-  try {
-    const session = await createSession(
-      newBuyIn ? parseFloat(newBuyIn) : 0,
-      newMaxRebuys ? parseInt(newMaxRebuys, 10) : 0
-    );
-    navigation.navigate('Lobby', { sessionCode: session.sessionCode });
-  } catch (err: unknown) {
-    setCreateError(err instanceof Error ? err.message : 'Could not create session');
-  } finally {
-    setCreating(false);
-    setNewBuyIn('');
-    setNewMaxRebuys('');
+  async function handleCreateSession() {
+    setCreateError(null);
+    setCreating(true);
+    setShowCreateModal(false);
+    try {
+      const session = await createSession(
+        newBuyIn ? parseFloat(newBuyIn) : 0,
+        newMaxRebuys ? parseInt(newMaxRebuys, 10) : 0
+      );
+      navigation.navigate('Lobby', { sessionCode: session.sessionCode });
+    } catch (err: unknown) {
+      setCreateError(err instanceof Error ? err.message : 'Could not create session');
+    } finally {
+      setCreating(false);
+      setNewBuyIn('');
+      setNewMaxRebuys('');
+    }
   }
-}
 
   async function handleRespond(invite: SessionInvite, action: 'accept' | 'decline') {
     setRespondingTo(invite.id);
     setRespondError(null);
-
     try {
       await respondToInvite(invite.id, action);
       setInvites((prev) => prev.filter((i) => i.id !== invite.id));
-
       if (action === 'accept') {
         navigation.navigate('Lobby', { sessionCode: invite.sessionCode });
       }
     } catch (err: unknown) {
       console.error('Invite response error:', err);
       const statusCode = (err as { statusCode?: number }).statusCode;
-
       if (statusCode === 410) {
         setRespondError('That session has already started.');
         setInvites((prev) => prev.filter((i) => i.id !== invite.id));
@@ -234,6 +249,16 @@ async function handleCreateSession() {
     }
   }
 
+  // TM22-146: Navigate back into the active session and re-establish socket
+  function handleRejoinSession() {
+    if (!activeSession?.sessionCode) return;
+    navigation.navigate('Game', {
+      sessionCode: activeSession.sessionCode,
+      buyInAmount: activeSession.buyInAmount ?? 0,
+    });
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────
   if (loading) {
     return <LoadingSpinner message="Loading home..." />;
   }
@@ -271,13 +296,31 @@ async function handleCreateSession() {
         </View>
       </View>
 
+      {/* ── TM22-146: Active Session Rejoin Banner ── */}
+      {activeSession?.sessionCode != null && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.rejoinBanner,
+            pressed && styles.rejoinBannerPressed,
+          ]}
+          onPress={handleRejoinSession}
+        >
+          <View style={styles.rejoinBannerLeft}>
+            <View style={styles.rejoinPulseDot} />
+            <View>
+              <Text style={styles.rejoinBannerLabel}>SESSION IN PROGRESS</Text>
+              <Text style={styles.rejoinBannerCode}>{activeSession.sessionCode}</Text>
+            </View>
+          </View>
+          <Text style={styles.rejoinBannerCta}>Rejoin →</Text>
+        </Pressable>
+      )}
+
       {friendRequests.length > 0 && (
         <View style={styles.inviteSection}>
           <Text style={styles.inviteSectionTitle}>Friend Requests</Text>
-
           {friendRequests.map((request) => {
             const isResponding = respondingToRequest === request.id;
-
             return (
               <View key={request.id} style={styles.inviteRow}>
                 <Text style={styles.inviteFrom}>{request.requesterUsername}</Text>
@@ -293,7 +336,6 @@ async function handleCreateSession() {
                       <Text style={styles.acceptButtonText}>Accept</Text>
                     )}
                   </Pressable>
-
                   <Pressable
                     style={[styles.declineButton, isResponding && styles.actionDisabled]}
                     onPress={() => handleRespondToRequest(request, 'decline')}
@@ -314,10 +356,7 @@ async function handleCreateSession() {
         </View>
       )}
 
-      {respondError !== null && (
-        <ErrorMessage message={respondError} />
-      )}
-
+      {respondError !== null && <ErrorMessage message={respondError} />}
       {createError !== null && (
         <ErrorMessage message={createError} onRetry={handleCreateSession} />
       )}
@@ -326,13 +365,12 @@ async function handleCreateSession() {
 
   const footerContent = (
     <View style={styles.buttonContainer}>
-    {/* In the footerContent, replace the primary button: */}
       <Pressable
         style={({ pressed }) => [
           styles.primaryButton,
           (pressed || creating) && styles.buttonPressed,
         ]}
-        onPress={() => setShowCreateModal(true)}  // ← open modal, don't create directly
+        onPress={() => setShowCreateModal(true)}
         disabled={creating}
       >
         {creating ? (
@@ -343,40 +381,28 @@ async function handleCreateSession() {
       </Pressable>
 
       <Pressable
-        style={({ pressed }) => [
-          styles.secondaryButton,
-          pressed && styles.buttonPressed,
-        ]}
+        style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
         onPress={() => navigation.navigate('JoinSession')}
       >
         <Text style={styles.secondaryButtonText}>Join Session</Text>
       </Pressable>
 
       <Pressable
-        style={({ pressed }) => [
-          styles.secondaryButton,
-          pressed && styles.buttonPressed,
-        ]}
+        style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
         onPress={() => navigation.navigate('Leaderboard')}
       >
         <Text style={styles.secondaryButtonText}>Leaderboard</Text>
       </Pressable>
 
       <Pressable
-        style={({ pressed }) => [
-          styles.secondaryButton,
-          pressed && styles.buttonPressed,
-        ]}
+        style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
         onPress={() => navigation.navigate('FriendsList')}
       >
         <Text style={styles.secondaryButtonText}>My Friends</Text>
       </Pressable>
 
       <Pressable
-        style={({ pressed }) => [
-          styles.secondaryButton,
-          pressed && styles.buttonPressed,
-        ]}
+        style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
         onPress={() => navigation.navigate('Profile')}
       >
         <Text style={styles.secondaryButtonText}>My Profile</Text>
@@ -395,12 +421,10 @@ async function handleCreateSession() {
         ListFooterComponent={footerContent}
         renderItem={({ item }) => {
           const isResponding = respondingTo === item.id;
-
           return (
             <View style={styles.inviteRow}>
               <Text style={styles.inviteFrom}>From: {item.inviterUsername}</Text>
               <Text style={styles.inviteCode}>{item.sessionCode}</Text>
-
               <View style={styles.inviteActions}>
                 <Pressable
                   style={[styles.acceptButton, isResponding && styles.actionDisabled]}
@@ -413,7 +437,6 @@ async function handleCreateSession() {
                     <Text style={styles.acceptButtonText}>Accept</Text>
                   )}
                 </Pressable>
-
                 <Pressable
                   style={[styles.declineButton, isResponding && styles.actionDisabled]}
                   onPress={() => handleRespond(item, 'decline')}
@@ -545,7 +568,7 @@ const styles = StyleSheet.create({
   profileRow: {
     width: '100%',
     maxWidth: 320,
-    marginBottom: 32,
+    marginBottom: 20,
   },
   userSection: {
     alignItems: 'flex-start',
@@ -577,6 +600,55 @@ const styles = StyleSheet.create({
     color: colors.placeholder,
     fontSize: 13,
     fontWeight: '600',
+  },
+
+  // ── TM22-146: Rejoin banner ─────────────────────────────────────────────
+  rejoinBanner: {
+    width: '100%',
+    maxWidth: 320,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#1A2A1A',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#4CAF50',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+  },
+  rejoinBannerPressed: {
+    opacity: 0.8,
+  },
+  rejoinBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  rejoinPulseDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#4CAF50',
+  },
+  rejoinBannerLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#4CAF50',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  rejoinBannerCode: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 4,
+  },
+  rejoinBannerCta: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#4CAF50',
   },
 
   inviteSection: {

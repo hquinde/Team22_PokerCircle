@@ -404,3 +404,26 @@ export async function getUserProfile(userId: string): Promise<UserProfile> {
   }
   return response.json() as Promise<UserProfile>;
 }
+
+// ---------------------------------------------------------------------------
+// TM22-146: Active session rejoin
+// ---------------------------------------------------------------------------
+
+export interface ActiveSessionInfo {
+  sessionCode: string | null;
+  buyInAmount?: number;
+  maxRebuys?: number;
+}
+
+export async function getActiveSession(userId: string): Promise<ActiveSessionInfo> {
+  const response = await fetch(`${BACKEND_URL}/api/users/${userId}/active-session`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string };
+    throw Object.assign(new Error(body.error ?? 'Failed to check active session'), {
+      statusCode: response.status,
+    });
+  }
+  return response.json() as Promise<ActiveSessionInfo>;
+}

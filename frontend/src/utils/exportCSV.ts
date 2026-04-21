@@ -1,4 +1,4 @@
-import { File, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import type { UserSession } from '../types/profile';
 
@@ -21,10 +21,10 @@ export function generateSessionCSV(
       toCSVDate(s.date),
       s.sessionCode,
       s.playerCount,
-      s.buyIn.toFixed(2),
-      s.rebuys.toFixed(2),
-      s.cashOut.toFixed(2),
-      s.net.toFixed(2),
+      (s.buyIn ?? 0).toFixed(2),
+      (s.rebuys ?? 0).toFixed(2),
+      (s.cashOut ?? 0).toFixed(2),
+      (s.net ?? 0).toFixed(2),
     ].join(',')
   );
 
@@ -44,11 +44,15 @@ export async function exportSessionsToCSV(
   }
 
   const { csv, filename } = generateSessionCSV(sessions, username);
-  const file = new File(Paths.cache, filename);
-  file.write(csv);
+  const fileUri = (FileSystem.cacheDirectory ?? '') + filename;
 
-  await Sharing.shareAsync(file.uri, {
+  await FileSystem.writeAsStringAsync(fileUri, csv, {
+    encoding: 'utf8',
+  });
+
+  await Sharing.shareAsync(fileUri, {
     mimeType: 'text/csv',
+    UTI: 'public.comma-separated-values-text',
     dialogTitle: 'Export Session History',
   });
 }

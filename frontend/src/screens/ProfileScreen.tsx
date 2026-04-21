@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   SafeAreaView,
   StatusBar,
@@ -110,8 +111,9 @@ export default function ProfileScreen({ navigation }: Props) {
     setExporting(true);
     try {
       await exportSessionsToCSV(sessions, username);
-    } catch {
-      // share sheet dismissed or unavailable — no user-visible error needed
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      Alert.alert('Export failed', msg);
     } finally {
       setExporting(false);
     }

@@ -8,6 +8,9 @@ export interface UserStats {
 export interface UserSession {
   sessionCode: string;
   date: string;        // ISO date string
+  buyIn: number;
+  rebuys: number;
+  cashOut: number;
   net: number;
   playerCount: number;
 }

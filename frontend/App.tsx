@@ -1,11 +1,12 @@
 import 'react-native-gesture-handler';
-import { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { useEffect, useRef, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
 
 import HomeScreen from './src/screens/HomeScreen';
 import JoinSessionScreen from './src/screens/JoinSessionScreen';
@@ -24,6 +25,7 @@ import LeaderboardScreen from './src/screens/LeaderboardScreen';
 import { BACKEND_URL } from './src/config/api';
 import { loadAuth } from './src/services/authStorage';
 import { colors } from './src/theme/colors';
+import { registerPushToken } from './src/api/api';
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -43,6 +45,18 @@ export type RootStackParamList = {
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
+
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 /* ---------------- TAB NAVIGATOR ---------------- */
 function MainTabs() {
@@ -77,8 +91,23 @@ function MainTabs() {
 /* ---------------- AUTH STATE ---------------- */
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
+async function requestAndRegisterPushToken(userId: string): Promise<void> {
+  if (Platform.OS === 'web') return;
+
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') return;
+
+  try {
+    const tokenData = await Notifications.getExpoPushTokenAsync();
+    await registerPushToken(userId, tokenData.data);
+  } catch (err) {
+    console.warn('[push] Failed to register push token', err);
+  }
+}
+
 export default function App() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
+  const notifListenerRef = useRef<ReturnType<typeof Notifications.addNotificationResponseReceivedListener> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,7 +132,12 @@ export default function App() {
           clearTimeout(timeout);
 
           if (!cancelled) {
-            setAuthStatus(res.ok ? 'authenticated' : 'unauthenticated');
+            if (res.ok) {
+              setAuthStatus('authenticated');
+              void requestAndRegisterPushToken(stored.userID);
+            } else {
+              setAuthStatus('unauthenticated');
+            }
           }
         } catch {
           clearTimeout(timeout);
@@ -121,6 +155,27 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    notifListenerRef.current = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data as Record<string, string> | undefined;
+      if (!navigationRef.isReady()) return;
+
+      if (data?.type === 'friend_request') {
+        navigationRef.navigate('MainTabs');
+        // Give the tab navigator a moment to mount before switching tabs
+        setTimeout(() => {
+          if (navigationRef.isReady()) navigationRef.navigate('FriendsList' as any);
+        }, 300);
+      } else if (data?.type === 'session_invite') {
+        navigationRef.navigate('MainTabs');
+      }
+    });
+
+    return () => {
+      notifListenerRef.current?.remove();
+    };
+  }, []);
+
   /* ---------------- LOADING SCREEN ---------------- */
   if (authStatus === 'loading') {
     return (
@@ -133,7 +188,7 @@ export default function App() {
 
   /* ---------------- NAVIGATION ---------------- */
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <StatusBar style="auto" />
       <Stack.Navigator
         initialRouteName={authStatus === 'authenticated' ? 'MainTabs' : 'Welcome'}

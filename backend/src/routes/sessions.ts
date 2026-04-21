@@ -12,6 +12,7 @@ import {
   updateSessionStatus,
   updatePlayerFinances,
 } from '../store/sessionDbStore';
+import { sendPushNotification } from '../utils/pushNotification';
 
 const router = Router();
 
@@ -569,6 +570,19 @@ router.post(
     );
     const inviterUsername: string = inviterResult.rows[0]?.username ?? 'Unknown';
     io.to(`user:${inviteeId}`).emit('user:invite', { ...invite, inviterUsername });
+
+    if (isNew) {
+      const tokenResult = await pool.query<{ push_token: string | null }>(
+        'SELECT push_token FROM users WHERE user_id = $1',
+        [inviteeId]
+      );
+      void sendPushNotification(
+        tokenResult.rows[0]?.push_token ?? null,
+        'Session Invite',
+        `${inviterUsername} invited you to a game!`,
+        { type: 'session_invite' }
+      );
+    }
 
     return res.status(isNew ? 201 : 200).json({ ...invite, inviterUsername });
   })

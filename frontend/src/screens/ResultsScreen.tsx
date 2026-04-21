@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Linking,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -11,13 +13,91 @@ import {
 } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
-import { getSessionResults } from '../api/api';
+import { getSessionResults, submitRating } from '../api/api';
 import type { PlayerResult, SettlementTransaction } from '../api/api';
 import { colors } from '../theme/colors';
+import { BACKEND_URL } from '../config/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 
 type Props = StackScreenProps<RootStackParamList, 'Results'>;
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface RatablePlayer {
+  userId: string;
+  displayName: string;
+}
+
+// ---------------------------------------------------------------------------
+// Star selector sub-component
+// ---------------------------------------------------------------------------
+
+function StarSelector({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: number | null;
+  onChange: (stars: number) => void;
+  disabled: boolean;
+}) {
+  return (
+    <View style={starStyles.row}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Pressable
+          key={n}
+          onPress={() => !disabled && onChange(n)}
+          style={({ pressed }) => [
+            starStyles.star,
+            pressed && !disabled && starStyles.starPressed,
+          ]}
+          disabled={disabled}
+          accessibilityLabel={`Rate ${n} star${n !== 1 ? 's' : ''}`}
+        >
+          <Text
+            style={[
+              starStyles.starText,
+              value !== null && n <= value
+                ? starStyles.starFilled
+                : starStyles.starEmpty,
+            ]}
+          >
+            ★
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+const starStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  star: {
+    padding: 4,
+  },
+  starPressed: {
+    opacity: 0.6,
+  },
+  starText: {
+    fontSize: 28,
+  },
+  starFilled: {
+    color: '#FFC107',
+  },
+  starEmpty: {
+    color: '#444444',
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Main screen
+// ---------------------------------------------------------------------------
 
 export default function ResultsScreen({ route, navigation }: Props) {
   const { sessionCode } = route.params;
@@ -27,16 +107,92 @@ export default function ResultsScreen({ route, navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Rating state
+  const [ratablePlayers, setRatablePlayers] = useState<RatablePlayer[]>([]);
+  const [ratings, setRatings] = useState<Record<string, number | null>>({});
+  const [ratingsSubmitted, setRatingsSubmitted] = useState(false);
+  const [ratingsSubmitting, setRatingsSubmitting] = useState(false);
+  const [ratingsError, setRatingsError] = useState<string | null>(null);
+  const myUserIdRef = useRef<string | null>(null);
+
+  // ── Load results + identify ratable players ─────────────────────────────
   const loadResults = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const data = await getSessionResults(sessionCode);
-      const sorted = [...data.playerResults].sort((a, b) => b.netResult - a.netResult);
+      // Fetch current user and session results in parallel
+      const [meRes, data] = await Promise.all([
+        fetch(`${BACKEND_URL}/api/auth/me`, { credentials: 'include' }),
+        getSessionResults(sessionCode),
+      ]);
 
+      const sorted = [...data.playerResults].sort((a, b) => b.netResult - a.netResult);
       setPlayerResults(sorted);
       setTransactions(data.transactions);
+
+      // Identify which players we can rate (all except self)
+      // We need userIDs — fetch session players to match displayName → userId
+      if (meRes.ok) {
+        const me = (await meRes.json()) as { userID: string; username: string };
+        myUserIdRef.current = me.userID;
+
+        // Fetch session players list (has displayName, linked to users via username)
+        const playersRes = await fetch(
+          `${BACKEND_URL}/api/sessions/${sessionCode}/players`,
+          { credentials: 'include' }
+        );
+
+        if (playersRes.ok) {
+          const players = (await playersRes.json()) as Array<{
+            displayName?: string;
+            name?: string;
+          }>;
+
+          // For each non-self player, resolve their userId from the users table
+          // via GET /api/users/:userId - we search by username using the friends
+          // search endpoint since we just need userId↔username mapping
+          const otherDisplayNames = players
+            .map((p) => p.displayName ?? p.name ?? '')
+            .filter((name) => name.trim() !== '' && name !== me.username);
+
+          // Resolve display names → userIds by calling friends search for each
+          // (we use the existing search endpoint — it returns userId + username)
+          const resolved: RatablePlayer[] = [];
+          await Promise.all(
+            otherDisplayNames.map(async (displayName) => {
+              try {
+                const searchRes = await fetch(
+                  `${BACKEND_URL}/api/friends/search?q=${encodeURIComponent(displayName)}`,
+                  { credentials: 'include' }
+                );
+                if (searchRes.ok) {
+                  const searchData = (await searchRes.json()) as {
+                    users: Array<{ userId: string; username: string }>;
+                  };
+                  // Find exact username match (search is ILIKE so verify)
+                  const match = searchData.users.find(
+                    (u) => u.username.toLowerCase() === displayName.toLowerCase()
+                  );
+                  if (match) {
+                    resolved.push({ userId: match.userId, displayName });
+                  }
+                }
+              } catch {
+                // Non-fatal — guest players without accounts just won't appear
+              }
+            })
+          );
+
+          setRatablePlayers(resolved);
+          // Initialise all ratings to null (unset / skip)
+          const initialRatings: Record<string, number | null> = {};
+          for (const p of resolved) {
+            initialRatings[p.userId] = null;
+          }
+          setRatings(initialRatings);
+        }
+      }
     } catch (err: unknown) {
       console.error('ResultsScreen load error:', err);
       setError(
@@ -53,15 +209,17 @@ export default function ResultsScreen({ route, navigation }: Props) {
     void loadResults();
   }, [sessionCode]);
 
+  // Block hardware back
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       if (e.data.action.type === 'GO_BACK') {
         e.preventDefault();
       }
     });
-
     return unsubscribe;
   }, [navigation]);
+
+  // ── Handlers ────────────────────────────────────────────────────────────
 
   const handleReturnHome = () => {
     navigation.reset({
@@ -70,10 +228,71 @@ export default function ResultsScreen({ route, navigation }: Props) {
     });
   };
 
+  const handleSetRating = (userId: string, stars: number) => {
+    setRatings((prev) => ({ ...prev, [userId]: stars }));
+  };
+
+  const handleSubmitRatings = async () => {
+    const toSubmit = ratablePlayers.filter(
+      (p) => ratings[p.userId] !== null
+    );
+
+    // If nothing was rated, just skip
+    if (toSubmit.length === 0) {
+      const confirmed =
+        Platform.OS === 'web'
+          ? window.confirm("You haven't rated anyone. Skip ratings?")
+          : await new Promise<boolean>((resolve) => {
+              Alert.alert(
+                'Skip Ratings?',
+                "You haven't rated anyone. Skip ratings and return home?",
+                [
+                  { text: 'Go Back', style: 'cancel', onPress: () => resolve(false) },
+                  { text: 'Skip', onPress: () => resolve(true) },
+                ]
+              );
+            });
+      if (confirmed) handleReturnHome();
+      return;
+    }
+
+    setRatingsSubmitting(true);
+    setRatingsError(null);
+
+    const errors: string[] = [];
+
+    await Promise.all(
+      toSubmit.map(async (p) => {
+        const stars = ratings[p.userId];
+        if (stars === null) return;
+        try {
+          await submitRating(p.userId, sessionCode, stars);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Unknown error';
+          // Duplicate is fine — user may have already submitted
+          if (!msg.toLowerCase().includes('already rated')) {
+            errors.push(`${p.displayName}: ${msg}`);
+          }
+        }
+      })
+    );
+
+    setRatingsSubmitting(false);
+
+    if (errors.length > 0) {
+      setRatingsError(`Some ratings failed:\n${errors.join('\n')}`);
+    } else {
+      setRatingsSubmitted(true);
+      // Short delay so user sees the success state, then go home
+      setTimeout(() => handleReturnHome(), 1200);
+    }
+  };
+
+  // ── Payment helpers (unchanged from before) ──────────────────────────────
+
   const openUrlWithFallback = async (primaryUrl: string, fallbackUrl: string) => {
     try {
       const supported = await Linking.canOpenURL(primaryUrl);
-
       if (supported) {
         await Linking.openURL(primaryUrl);
       } else {
@@ -88,14 +307,11 @@ export default function ResultsScreen({ route, navigation }: Props) {
   const handleVenmoPayment = async (to: string, amount: number) => {
     const note = encodeURIComponent(`PokerCircle payment for session ${sessionCode}`);
     const venmoAppUrl = `venmo://paycharge?txn=pay&amount=${amount.toFixed(2)}&note=${note}`;
-    const venmoWebUrl = 'https://venmo.com/';
-
     Alert.alert(
       'Open Venmo',
       `Recipient handle for ${to} is not saved yet, so Venmo will open and you can finish the payment manually.`
     );
-
-    await openUrlWithFallback(venmoAppUrl, venmoWebUrl);
+    await openUrlWithFallback(venmoAppUrl, 'https://venmo.com/');
   };
 
   const handlePayPalPayment = async (to: string) => {
@@ -103,7 +319,6 @@ export default function ResultsScreen({ route, navigation }: Props) {
       'Open PayPal',
       `PayPal.Me handle for ${to} is not saved yet, so PayPal will open and you can finish the payment manually.`
     );
-
     await openUrlWithFallback('paypal://', 'https://www.paypal.com/');
   };
 
@@ -112,9 +327,10 @@ export default function ResultsScreen({ route, navigation }: Props) {
       'Open Cash App',
       `Cash App handle for ${to} is not saved yet, so Cash App will open and you can finish the payment manually.`
     );
-
     await openUrlWithFallback('cashapp://', 'https://cash.app/');
   };
+
+  // ── Render ───────────────────────────────────────────────────────────────
 
   if (loading) {
     return <LoadingSpinner message="Calculating results..." />;
@@ -135,12 +351,17 @@ export default function ResultsScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Header ── */}
         <View style={styles.headerRow}>
           <Text style={styles.title}>Results</Text>
           <Text style={styles.code}>{sessionCode}</Text>
         </View>
 
+        {/* ── Net Results ── */}
         <Text style={styles.sectionLabel}>Net Results</Text>
 
         {playerResults.map((item) => {
@@ -158,7 +379,6 @@ export default function ResultsScreen({ route, navigation }: Props) {
                   {item.displayName}
                 </Text>
               </View>
-
               <Text
                 style={[
                   styles.netAmount,
@@ -172,18 +392,23 @@ export default function ResultsScreen({ route, navigation }: Props) {
           );
         })}
 
+        {/* ── Who Pays Who ── */}
         <Text style={styles.sectionLabelWithSpacing}>Who Pays Who</Text>
 
         {transactions.length === 0 ? (
           <View style={styles.evenBox}>
-            <Text style={styles.evenText}>Everyone is even — no payments needed.</Text>
+            <Text style={styles.evenText}>
+              Everyone is even — no payments needed.
+            </Text>
           </View>
         ) : (
           transactions.map((t, idx) => (
             <View key={idx} style={styles.transactionCard}>
               <View style={styles.transactionHeader}>
                 <Text style={styles.transactionLabel}>Settlement</Text>
-                <Text style={styles.transactionAmount}>${t.amount.toFixed(2)}</Text>
+                <Text style={styles.transactionAmount}>
+                  ${t.amount.toFixed(2)}
+                </Text>
               </View>
 
               <Text style={styles.transactionText}>
@@ -198,14 +423,12 @@ export default function ResultsScreen({ route, navigation }: Props) {
                 >
                   <Text style={styles.payButtonText}>Venmo</Text>
                 </Pressable>
-
                 <Pressable
                   style={[styles.payButton, styles.paypalButton]}
                   onPress={() => handlePayPalPayment(t.to)}
                 >
                   <Text style={styles.payButtonText}>PayPal</Text>
                 </Pressable>
-
                 <Pressable
                   style={[styles.payButton, styles.cashAppButton]}
                   onPress={() => handleCashAppPayment(t.to)}
@@ -217,19 +440,85 @@ export default function ResultsScreen({ route, navigation }: Props) {
           ))
         )}
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.doneButton,
-            pressed ? styles.doneButtonPressed : null,
-          ]}
-          onPress={handleReturnHome}
-        >
-          <Text style={styles.doneButtonText}>Return to Home</Text>
-        </Pressable>
+        {/* ── Rate Your Players ── */}
+        {!ratingsSubmitted && ratablePlayers.length > 0 && (
+          <View style={styles.ratingsCard}>
+            <Text style={styles.ratingsTitle}>Rate Your Players</Text>
+            <Text style={styles.ratingsSubtitle}>
+              Optional — tap stars to rate, or leave blank to skip
+            </Text>
+
+            {ratablePlayers.map((player) => (
+              <View key={player.userId} style={styles.ratingRow}>
+                <Text style={styles.ratingName} numberOfLines={1}>
+                  {player.displayName}
+                </Text>
+                <StarSelector
+                  value={ratings[player.userId] ?? null}
+                  onChange={(stars) => handleSetRating(player.userId, stars)}
+                  disabled={ratingsSubmitting}
+                />
+              </View>
+            ))}
+
+            {ratingsError !== null && (
+              <Text style={styles.ratingsError}>{ratingsError}</Text>
+            )}
+
+            <Pressable
+              style={[
+                styles.submitRatingsButton,
+                ratingsSubmitting && styles.buttonDisabled,
+              ]}
+              onPress={handleSubmitRatings}
+              disabled={ratingsSubmitting}
+            >
+              {ratingsSubmitting ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text style={styles.submitRatingsText}>Submit Ratings</Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              style={styles.skipRatingsButton}
+              onPress={handleReturnHome}
+              disabled={ratingsSubmitting}
+            >
+              <Text style={styles.skipRatingsText}>Skip</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {ratingsSubmitted && (
+          <View style={styles.ratingsSuccessBox}>
+            <Text style={styles.ratingsSuccessText}>
+              ★ Ratings submitted — thanks!
+            </Text>
+          </View>
+        )}
+
+        {/* Hide Return Home if the ratings card is visible — ratings card
+            has its own Skip button that goes home */}
+        {(ratingsSubmitted || ratablePlayers.length === 0) && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.doneButton,
+              pressed ? styles.doneButtonPressed : null,
+            ]}
+            onPress={handleReturnHome}
+          >
+            <Text style={styles.doneButtonText}>Return to Home</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
@@ -433,6 +722,102 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
+  // ── Ratings section ────────────────────────────────────────────────────
+
+  ratingsCard: {
+    marginTop: 28,
+    backgroundColor: colors.inputBackground,
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+  },
+
+  ratingsTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+
+  ratingsSubtitle: {
+    fontSize: 12,
+    color: colors.placeholder,
+    marginBottom: 18,
+  },
+
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2A2A2A',
+  },
+
+  ratingName: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 12,
+  },
+
+  ratingsError: {
+    color: '#EF5350',
+    fontSize: 12,
+    marginTop: 10,
+    lineHeight: 18,
+  },
+
+  submitRatingsButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 18,
+  },
+
+  submitRatingsText: {
+    color: colors.textOnPrimary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  skipRatingsButton: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 6,
+  },
+
+  skipRatingsText: {
+    color: colors.placeholder,
+    fontSize: 14,
+  },
+
+  ratingsSuccessBox: {
+    marginTop: 24,
+    backgroundColor: 'rgba(76,175,80,0.12)',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#2E7D32',
+    alignItems: 'center',
+  },
+
+  ratingsSuccessText: {
+    color: '#4CAF50',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  buttonDisabled: {
+    opacity: 0.55,
+  },
+
+  // ── Done button ────────────────────────────────────────────────────────
+
   doneButton: {
     backgroundColor: colors.primary,
     borderRadius: 12,
@@ -453,5 +838,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  
 });

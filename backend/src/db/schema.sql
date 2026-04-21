@@ -100,3 +100,33 @@ ALTER TABLE session_players
   ADD COLUMN IF NOT EXISTS buy_in      INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS rebuy_total INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS cash_out    INTEGER NOT NULL DEFAULT 0;
+
+-- Player ratings (TM22-145)
+CREATE TABLE IF NOT EXISTS player_ratings (
+  id          SERIAL      PRIMARY KEY,
+  rater_id    TEXT        NOT NULL REFERENCES users("userID") ON DELETE CASCADE,
+  rated_id    TEXT        NOT NULL REFERENCES users("userID") ON DELETE CASCADE,
+  session_id  VARCHAR(6)  NOT NULL REFERENCES game_sessions(session_code) ON DELETE CASCADE,
+  stars       INTEGER     NOT NULL CHECK (stars BETWEEN 1 AND 5),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT unique_rating UNIQUE (rater_id, rated_id, session_id)
+);
+
+-- Safe migration for pre-existing databases
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_name = 'player_ratings'
+  ) THEN
+    CREATE TABLE player_ratings (
+      id          SERIAL      PRIMARY KEY,
+      rater_id    TEXT        NOT NULL REFERENCES users("userID") ON DELETE CASCADE,
+      rated_id    TEXT        NOT NULL REFERENCES users("userID") ON DELETE CASCADE,
+      session_id  VARCHAR(6)  NOT NULL REFERENCES game_sessions(session_code) ON DELETE CASCADE,
+      stars       INTEGER     NOT NULL CHECK (stars BETWEEN 1 AND 5),
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT unique_rating UNIQUE (rater_id, rated_id, session_id)
+    );
+  END IF;
+END $$;

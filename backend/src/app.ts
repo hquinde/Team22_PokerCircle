@@ -12,6 +12,7 @@ import morgan from "morgan";
 import pool from "./db/pool";
 import debugRouter from "./routes/debug";
 import authRouter from "./routes/auth";
+import ratingsRouter from "./routes/ratings";
 
 const app = express();
 app.set("trust proxy", 1); // Required on Railway — tells Express to trust the HTTPS proxy
@@ -84,6 +85,7 @@ app.use("/api/sessions", sessionsRouter);
 app.use("/api/invites", invitesRouter);
 app.use("/api/friends", friendsRouter);
 app.use("/api/users", usersRouter);
+app.use("/api/ratings", ratingsRouter);
 
 app.get("/ping", (_req, res) => {
   res.json({ message: "pong" });

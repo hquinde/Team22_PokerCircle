@@ -5,6 +5,42 @@ import { requireAuth } from "../middleware/requireAuth";
 import pool from "../db/pool";
 
 const router = Router();
+// GET /api/users/:userId
+// Returns public profile info + aggregate rating for a user
+router.get(
+  "/:userId",
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+
+    const result = await pool.query(
+      `SELECT
+        u."userID"       AS "userId",
+        u.username,
+        u.avatar,
+        COALESCE(AVG(pr.stars), 0)::float   AS "avgRating",
+        COUNT(pr.id)::int                   AS "ratingsCount"
+      FROM users u
+      LEFT JOIN player_ratings pr ON pr.rated_id = u."userID"
+      WHERE u."userID" = $1
+      GROUP BY u."userID", u.username, u.avatar`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const row = result.rows[0];
+    return res.json({
+      userId: row.userId,
+      username: row.username,
+      avatar: row.avatar ?? null,
+      avgRating: parseFloat(row.avgRating.toFixed(1)),
+      ratingsCount: row.ratingsCount,
+    });
+  })
+);
 
 // GET /api/users/:userId/stats
 // Returns aggregated all-time stats for a user from finished sessions
@@ -120,6 +156,48 @@ router.get(
         ...row,
         netResult: parseFloat(row.netResult)
       })),
+    });
+  })
+);
+
+// GET /api/users/:userId/active-session
+// Returns { sessionCode, buyInAmount, maxRebuys } if the user is a participant
+// in an in-progress session, or { sessionCode: null } if not.
+router.get(
+  "/:userId/active-session",
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+
+    // Auth guard: users can only query their own active session
+    if (String(req.session.userId) !== userId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const result = await pool.query(
+      `SELECT
+         gs.session_code  AS "sessionCode",
+         gs.buy_in_amount AS "buyInAmount",
+         gs.max_rebuys    AS "maxRebuys"
+       FROM session_players sp
+       JOIN game_sessions gs ON gs.session_code = sp.session_code
+       JOIN users u ON u.username = sp.display_name
+       WHERE u.user_id = $1
+         AND gs.status = 'active'
+       ORDER BY sp.joined_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ sessionCode: null });
+    }
+
+    const row = result.rows[0];
+    return res.json({
+      sessionCode: row.sessionCode,
+      buyInAmount: row.buyInAmount ?? 0,
+      maxRebuys: row.maxRebuys ?? 0,
     });
   })
 );

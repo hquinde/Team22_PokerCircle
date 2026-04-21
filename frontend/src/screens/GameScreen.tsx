@@ -124,12 +124,6 @@ function PlayerCard({ player, isMe, sessionBuyIn, canRemove, onRemove }: PlayerC
             <Text style={styles.activeBadgeText}>PLAYING</Text>
           </View>
         )}
-
-        {canRemove && (
-          <Pressable style={styles.removeButton} onPress={onRemove}>
-            <Text style={styles.removeButtonText}>Remove</Text>
-          </Pressable>
-        )}
       </View>
     </View>
   );

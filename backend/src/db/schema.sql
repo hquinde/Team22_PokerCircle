@@ -112,6 +112,9 @@ CREATE TABLE IF NOT EXISTS player_ratings (
   CONSTRAINT unique_rating UNIQUE (rater_id, rated_id, session_id)
 );
 
+-- Push notification token (TM22-push-notifications)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token TEXT;
+
 -- Safe migration for pre-existing databases
 DO $$
 BEGIN

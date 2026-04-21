@@ -406,6 +406,19 @@ export async function getUserProfile(userId: string): Promise<UserProfile> {
 }
 
 // ---------------------------------------------------------------------------
+// Push notifications
+// ---------------------------------------------------------------------------
+
+export async function registerPushToken(userId: string, token: string): Promise<void> {
+  await fetch(`${BACKEND_URL}/api/users/${userId}/push-token`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // TM22-146: Active session rejoin
 // ---------------------------------------------------------------------------
 

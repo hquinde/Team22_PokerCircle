@@ -4,6 +4,7 @@ import asyncHandler from "../middleware/asyncHandler";
 import { requireAuth } from "../middleware/requireAuth";
 import pool from "../db/pool";
 import type { Friend, FriendRequest } from "../types/invite";
+import { sendPushNotification } from "../utils/pushNotification";
 
 const router = Router();
 
@@ -77,6 +78,20 @@ router.post('/request', requireAuth, asyncHandler(async (req: Request, res: Resp
     [requesterId, addresseeId]
   );
   if (result.rows.length === 0) return res.status(409).json({ error: 'Friend request already sent.' });
+
+  const [requesterRow, addresseeRow] = await Promise.all([
+    pool.query<{ username: string }>('SELECT username FROM users WHERE "userID" = $1', [requesterId]),
+    pool.query<{ push_token: string | null }>('SELECT push_token FROM users WHERE "userID" = $1', [addresseeId]),
+  ]);
+  const requesterUsername = requesterRow.rows[0]?.username ?? 'Someone';
+  const addresseePushToken = addresseeRow.rows[0]?.push_token ?? null;
+  void sendPushNotification(
+    addresseePushToken,
+    'New Friend Request',
+    `${requesterUsername} sent you a friend request`,
+    { type: 'friend_request' }
+  );
+
   return res.status(201).json({ id: result.rows[0].id });
 }));
 

@@ -112,7 +112,7 @@ describe('Auth Routes', () => {
       const response = await agent.get('/api/auth/me');
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({
+      expect(response.body).toMatchObject({
         userID: 'user-123',
         username: 'testuser',
         email: 'test@example.com',

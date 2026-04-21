@@ -202,6 +202,27 @@ router.get(
   })
 );
 
+// PATCH /api/users/:userId/push-token
+router.patch(
+  '/:userId/push-token',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const { token } = req.body as { token?: string };
+
+    if (String(req.session.userId) !== userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    await pool.query(
+      `UPDATE users SET push_token = $1 WHERE "userID" = $2`,
+      [token ?? null, userId]
+    );
+
+    return res.json({ ok: true });
+  })
+);
+
 // PATCH /api/users/:userId/displayname
 // Updates the display name (username) for a user
 router.patch(

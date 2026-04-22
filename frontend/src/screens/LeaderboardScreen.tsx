@@ -97,7 +97,7 @@ export default function LeaderboardScreen({ navigation }: Props) {
                 </View>
 
                 <View style={styles.avatarSection}>
-                  <AvatarDisplay avatarId={item.avatar} size={40} />
+                  <AvatarDisplay avatarId={item.avatar} size={36} />
                 </View>
 
                 <View style={styles.infoSection}>

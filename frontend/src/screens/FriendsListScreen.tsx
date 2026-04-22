@@ -12,7 +12,9 @@ import {
   View,
 } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
-import type { RootStackParamList } from '../../App';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { RootStackParamList, TabParamList } from '../../App';
 import { colors } from '../theme/colors';
 import {
   getFriends,
@@ -24,7 +26,10 @@ import {
 import type { UserSearchResult } from '../api/api';
 import type { Friend, FriendRequest } from '../types/invite';
 
-type Props = StackScreenProps<RootStackParamList, 'FriendsList'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<TabParamList, 'FriendsList'>,
+  StackScreenProps<RootStackParamList>
+>;
 
 export default function FriendsListScreen({ navigation: _navigation }: Props) {
   const [loading, setLoading] = useState(true);

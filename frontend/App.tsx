@@ -27,6 +27,12 @@ import { BACKEND_URL } from './src/config/api';
 import { loadAuth } from './src/services/authStorage';
 import { colors } from './src/theme/colors';
 
+export type TabParamList = {
+  Home: undefined;
+  FriendsList: undefined;
+  Profile: undefined;
+};
+
 export type RootStackParamList = {
   Welcome: undefined;
   Login: undefined;
@@ -45,16 +51,18 @@ export type RootStackParamList = {
   Game: { sessionCode: string; buyInAmount?: number };
   Results: { sessionCode: string };
   SessionDetail: { sessionCode: string };
+  Leaderboard: undefined;
+  Discover: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<TabParamList>();
 
 /* ---------------- TAB NAVIGATOR ---------------- */
 function MainTabs() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={({ route }: { route: { name: keyof TabParamList } }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: 'gray',
@@ -62,7 +70,7 @@ function MainTabs() {
           backgroundColor: colors.background,
           borderTopWidth: 0,
         },
-        tabBarIcon: ({ color, size }) => {
+        tabBarIcon: ({ color, size }: { color: string; size: number }) => {
           let iconName: any;
 
           if (route.name === 'Home') iconName = 'home';
@@ -137,6 +145,28 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    notifListenerRef.current = Notifications.addNotificationResponseReceivedListener((response: Notifications.NotificationResponse) => {
+      const data = response.notification.request.content.data as Record<string, string> | undefined;
+      if (!navigationRef.isReady()) return;
+
+      if (data?.type === 'friend_request') {
+        navigationRef.navigate('MainTabs');
+        // Give the tab navigator a moment to mount before switching tabs
+        setTimeout(() => {
+          if (navigationRef.isReady()) navigationRef.navigate('FriendsList' as any);
+        }, 300);
+      } else if (data?.type === 'session_invite') {
+        navigationRef.navigate('MainTabs');
+      }
+    });
+
+    return () => {
+      notifListenerRef.current?.remove();
+    };
+  }, []);
+
+  /* ---------------- LOADING SCREEN ---------------- */
   if (authStatus === 'loading') {
     return (
       <View style={styles.splash}>
@@ -204,6 +234,40 @@ export default function App() {
         </Stack.Navigator>
       </NavigationContainer>
     </ErrorBoundary>
+    <NavigationContainer ref={navigationRef}>
+      <StatusBar style="auto" />
+      <Stack.Navigator
+        initialRouteName={authStatus === 'authenticated' ? 'MainTabs' : 'Welcome'}
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: colors.background,
+            elevation: 0,
+            shadowOpacity: 0,
+            borderBottomWidth: 0,
+          },
+          headerTintColor: colors.primary,
+          headerTitle: '',
+        }}
+      >
+        {/* AUTH */}
+        <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
+
+        {/* MAIN APP (WITH TABS) */}
+        <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+
+        {/* SESSION SCREENS (NO TAB BAR) */}
+        <Stack.Screen name="JoinSession" component={JoinSessionScreen} />
+        <Stack.Screen name="Lobby" component={LobbyScreen} />
+        <Stack.Screen name="InviteFriends" component={InviteFriendsScreen} />
+        <Stack.Screen name="Game" component={GameScreen} />
+        <Stack.Screen name="Results" component={ResultsScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 

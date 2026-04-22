@@ -12,7 +12,9 @@ import {
   View,
 } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
-import type { RootStackParamList } from '../../App';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { RootStackParamList, TabParamList } from '../../App';
 import { colors } from '../theme/colors';
 import {
   createSession,
@@ -30,7 +32,10 @@ import type { FriendRequest, SessionInvite } from '../types/invite';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 
-type Props = StackScreenProps<RootStackParamList, 'Home'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<TabParamList, 'Home'>,
+  StackScreenProps<RootStackParamList>
+>;
 
 export default function HomeScreen({ navigation }: Props) {
   const [creating, setCreating] = useState(false);
@@ -44,6 +49,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [newBuyIn, setNewBuyIn] = useState('');
   const [newMaxRebuys, setNewMaxRebuys] = useState('');
   const [newPrivacy, setNewPrivacy] = useState<'public' | 'private'>('private');
+
   const [username, setUsername] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -179,10 +185,19 @@ export default function HomeScreen({ navigation }: Props) {
       setUsername(null);
       setActiveSession(null);
       setLoggingOut(false);
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      });
+      
+      const parent = navigation.getParent();
+      if (parent) {
+        parent.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        });
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Login' as any }],
+        });
+      }
     }
   }
 
@@ -223,6 +238,24 @@ export default function HomeScreen({ navigation }: Props) {
     setNewBuyIn('');
     setNewMaxRebuys('');
     setNewPrivacy('private');
+    setCreateError(null);
+    setCreating(true);
+    setShowCreateModal(false);
+    try {
+      const session = await createSession(
+        newBuyIn ? parseFloat(newBuyIn) : 0,
+        newMaxRebuys ? parseInt(newMaxRebuys, 10) : 0,
+        newPrivacy
+      );
+      navigation.navigate('Lobby', { sessionCode: session.sessionCode });
+    } catch (err: unknown) {
+      setCreateError(err instanceof Error ? err.message : 'Could not create session');
+    } finally {
+      setCreating(false);
+      setNewBuyIn('');
+      setNewMaxRebuys('');
+      setNewPrivacy('private');
+    }
   }
 }
 
@@ -387,6 +420,13 @@ export default function HomeScreen({ navigation }: Props) {
 
       <Pressable
         style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
+        onPress={() => navigation.navigate('Discover')}
+      >
+        <Text style={styles.secondaryButtonText}>Discover Sessions</Text>
+      </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}
         onPress={() => navigation.navigate('JoinSession')}
       >
         <Text style={styles.secondaryButtonText}>Join Session</Text>
@@ -539,6 +579,62 @@ export default function HomeScreen({ navigation }: Props) {
     <Text style={styles.primaryButtonText}>Create</Text>
   )}
 </Pressable>
+              <TextInput
+                style={styles.modalInput}
+                value={newMaxRebuys}
+                onChangeText={setNewMaxRebuys}
+                keyboardType="numeric"
+                placeholder="0 = unlimited"
+                placeholderTextColor={colors.placeholder}
+              />
+
+              <Text style={styles.modalLabel}>Visibility</Text>
+              <View style={styles.toggleRow}>
+                <Pressable
+                  style={[
+                    styles.toggleBtn,
+                    newPrivacy === 'private' && styles.toggleBtnActive,
+                  ]}
+                  onPress={() => setNewPrivacy('private')}
+                >
+                  <Text
+                    style={[
+                      styles.toggleBtnText,
+                      newPrivacy === 'private' && styles.toggleBtnTextActive,
+                    ]}
+                  >
+                    Private
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.toggleBtn,
+                    newPrivacy === 'public' && styles.toggleBtnActive,
+                  ]}
+                  onPress={() => setNewPrivacy('public')}
+                >
+                  <Text
+                    style={[
+                      styles.toggleBtnText,
+                      newPrivacy === 'public' && styles.toggleBtnTextActive,
+                    ]}
+                  >
+                    Public
+                  </Text>
+                </Pressable>
+              </View>
+
+              <Pressable
+                style={[styles.primaryButton, { marginBottom: 10 }]}
+                onPress={handleCreateSession}
+                disabled={creating}
+              >
+                {creating ? (
+                  <ActivityIndicator color={colors.textOnPrimary} />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Create</Text>
+                )}
+              </Pressable>
 
               <Pressable
                 style={styles.secondaryButton}
@@ -634,6 +730,32 @@ privacyOptionText: {
 privacyOptionTextActive: {
   color: colors.textOnPrimary,
 },
+  toggleRow: {
+    flexDirection: 'row',
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  toggleBtnActive: {
+    backgroundColor: colors.primary,
+  },
+  toggleBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.placeholder,
+  },
+  toggleBtnTextActive: {
+    color: colors.textOnPrimary,
+  },
 
   header: {
     alignItems: 'center',

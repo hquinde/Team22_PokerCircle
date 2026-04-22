@@ -46,6 +46,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
   const [isStarting, setIsStarting] = useState(false);
   const [buyInAmount, setBuyInAmount] = useState(0);
   const [maxRebuys, setMaxRebuys] = useState(0);
+  const [privacy, setPrivacy] = useState<'public' | 'private'>('private');
   const [joinMessage, setJoinMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isHost, setIsHost] = useState(false);
@@ -184,6 +185,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
             setIsHost(session.hostUserId === myUserId);
             setBuyInAmount(session.buyInAmount ?? 0);
             setMaxRebuys(session.maxRebuys ?? 0);
+            setPrivacy(session.privacy ?? 'private');
           }
         } catch (err) {
           console.error('LobbyScreen: Error fetching session:', err);
@@ -389,6 +391,16 @@ export default function LobbyScreen({ route, navigation }: Props) {
 
       {(buyInAmount > 0 || maxRebuys > 0) && (
         <View style={styles.rulesCard}>
+          <View style={styles.privacyBadgeRow}>
+            <View
+              style={[
+                styles.privacyBadge,
+                privacy === 'public' ? styles.publicBadge : styles.privateBadge,
+              ]}
+            >
+              <Text style={styles.privacyBadgeText}>{privacy.toUpperCase()}</Text>
+            </View>
+          </View>
           {buyInAmount > 0 && (
             <Text style={styles.ruleText}>Buy-in: ${buyInAmount}</Text>
           )}
@@ -670,6 +682,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginVertical: 2,
+  },
+  privacyBadgeRow: {
+    marginBottom: 8,
+  },
+  privacyBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  publicBadge: {
+    borderColor: '#4CAF50',
+    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+  },
+  privateBadge: {
+    borderColor: colors.placeholder,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  privacyBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+    color: colors.text,
   },
 
   leaveButtonContainer: {

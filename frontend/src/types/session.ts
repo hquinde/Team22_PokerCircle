@@ -25,5 +25,6 @@ export interface Session {
   status: SessionStatus;
   buyInAmount: number;
   maxRebuys: number;
+  privacy: 'public' | 'private'; // ✅ ADDED THIS LINE
   players: Player[];
 }

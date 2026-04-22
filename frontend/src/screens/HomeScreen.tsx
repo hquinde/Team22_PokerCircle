@@ -43,7 +43,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newBuyIn, setNewBuyIn] = useState('');
   const [newMaxRebuys, setNewMaxRebuys] = useState('');
-
+  const [newPrivacy, setNewPrivacy] = useState<'public' | 'private'>('private');
   const [username, setUsername] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -204,23 +204,28 @@ export default function HomeScreen({ navigation }: Props) {
   }
 
   async function handleCreateSession() {
-    setCreateError(null);
-    setCreating(true);
-    setShowCreateModal(false);
-    try {
-      const session = await createSession(
-        newBuyIn ? parseFloat(newBuyIn) : 0,
-        newMaxRebuys ? parseInt(newMaxRebuys, 10) : 0
-      );
-      navigation.navigate('Lobby', { sessionCode: session.sessionCode });
-    } catch (err: unknown) {
-      setCreateError(err instanceof Error ? err.message : 'Could not create session');
-    } finally {
-      setCreating(false);
-      setNewBuyIn('');
-      setNewMaxRebuys('');
-    }
+  setCreateError(null);
+  setCreating(true);
+  setShowCreateModal(false);
+
+  try {
+    const session = await createSession(
+      newBuyIn ? parseFloat(newBuyIn) : 0,
+      newMaxRebuys ? parseInt(newMaxRebuys, 10) : 0,
+      newPrivacy
+    );
+
+    navigation.navigate('Lobby', { sessionCode: session.sessionCode });
+  } catch (err: unknown) {
+    setCreateError(err instanceof Error ? err.message : 'Could not create session');
+  } finally {
+    setCreating(false);
+    setNewBuyIn('');
+    setNewMaxRebuys('');
+    setNewPrivacy('private');
   }
+}
+
 
   async function handleRespond(invite: SessionInvite, action: 'accept' | 'decline') {
     setRespondingTo(invite.id);
@@ -475,26 +480,65 @@ export default function HomeScreen({ navigation }: Props) {
               />
 
               <Text style={styles.modalLabel}>Max Rebuys</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={newMaxRebuys}
-                onChangeText={setNewMaxRebuys}
-                keyboardType="numeric"
-                placeholder="0 = unlimited"
-                placeholderTextColor={colors.placeholder}
-              />
+<TextInput
+  style={styles.modalInput}
+  value={newMaxRebuys}
+  onChangeText={setNewMaxRebuys}
+  keyboardType="numeric"
+  placeholder="0 = unlimited"
+  placeholderTextColor={colors.placeholder}
+/>
 
-              <Pressable
-                style={[styles.primaryButton, { marginBottom: 10 }]}
-                onPress={handleCreateSession}
-                disabled={creating}
-              >
-                {creating ? (
-                  <ActivityIndicator color={colors.textOnPrimary} />
-                ) : (
-                  <Text style={styles.primaryButtonText}>Create</Text>
-                )}
-              </Pressable>
+<Text style={styles.modalLabel}>Session Privacy</Text>
+
+<View style={styles.privacyRow}>
+  <Pressable
+    style={[
+      styles.privacyOption,
+      newPrivacy === 'private' && styles.privacyOptionActive,
+    ]}
+    onPress={() => setNewPrivacy('private')}
+  >
+    <Text
+      style={[
+        styles.privacyOptionText,
+        newPrivacy === 'private' && styles.privacyOptionTextActive,
+      ]}
+    >
+      Private
+    </Text>
+  </Pressable>
+
+  <Pressable
+    style={[
+      styles.privacyOption,
+      { marginRight: 0 },
+      newPrivacy === 'public' && styles.privacyOptionActive,
+    ]}
+    onPress={() => setNewPrivacy('public')}
+  >
+    <Text
+      style={[
+        styles.privacyOptionText,
+        newPrivacy === 'public' && styles.privacyOptionTextActive,
+      ]}
+    >
+      Public
+    </Text>
+  </Pressable>
+</View>
+
+<Pressable
+  style={[styles.primaryButton, { marginBottom: 10 }]}
+  onPress={handleCreateSession}
+  disabled={creating}
+>
+  {creating ? (
+    <ActivityIndicator color={colors.textOnPrimary} />
+  ) : (
+    <Text style={styles.primaryButtonText}>Create</Text>
+  )}
+</Pressable>
 
               <Pressable
                 style={styles.secondaryButton}
@@ -559,6 +603,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 16,
   },
+
+  privacyRow: {
+  flexDirection: 'row',
+  marginBottom: 16,
+},
+
+privacyOption: {
+  flex: 1,
+  backgroundColor: colors.background,
+  borderWidth: 1,
+  borderColor: colors.inputBorder,
+  borderRadius: 8,
+  paddingVertical: 12,
+  alignItems: 'center',
+  marginRight: 10,
+},
+
+privacyOptionActive: {
+  backgroundColor: colors.primary,
+  borderColor: colors.primary,
+},
+
+privacyOptionText: {
+  color: colors.text,
+  fontSize: 14,
+  fontWeight: '600',
+},
+
+privacyOptionTextActive: {
+  color: colors.textOnPrimary,
+},
 
   header: {
     alignItems: 'center',
@@ -762,4 +837,5 @@ const styles = StyleSheet.create({
     opacity: 0.85,
     transform: [{ scale: 0.97 }],
   },
+
 });

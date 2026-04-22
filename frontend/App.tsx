@@ -1,12 +1,11 @@
 import 'react-native-gesture-handler';
-import { useEffect, useRef, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
-import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
 
 import HomeScreen from './src/screens/HomeScreen';
 import JoinSessionScreen from './src/screens/JoinSessionScreen';
@@ -20,43 +19,36 @@ import ResultsScreen from './src/screens/ResultsScreen';
 import FriendsListScreen from './src/screens/FriendsListScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SessionDetailScreen from './src/screens/SessionDetailScreen';
-
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
+import DiscoverScreen from './src/screens/DiscoverScreen';
+
+import ErrorBoundary from './src/components/ErrorBoundary';
 import { BACKEND_URL } from './src/config/api';
 import { loadAuth } from './src/services/authStorage';
 import { colors } from './src/theme/colors';
-import { registerPushToken } from './src/api/api';
 
 export type RootStackParamList = {
   Welcome: undefined;
   Login: undefined;
   Signup: undefined;
   MainTabs: undefined;
+
+  Home: undefined;
+  FriendsList: undefined;
+  Profile: undefined;
+  Leaderboard: undefined;
+  Discover: undefined;
+
   JoinSession: { preFilledCode?: string } | undefined;
   Lobby: { sessionCode: string };
   InviteFriends: { sessionCode: string };
   Game: { sessionCode: string; buyInAmount?: number };
   Results: { sessionCode: string };
   SessionDetail: { sessionCode: string };
-  FriendsList: undefined;
-  Profile: undefined;
-  Leaderboard: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
-
-export const navigationRef = createNavigationContainerRef<RootStackParamList>();
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
 
 /* ---------------- TAB NAVIGATOR ---------------- */
 function MainTabs() {
@@ -76,14 +68,23 @@ function MainTabs() {
           if (route.name === 'Home') iconName = 'home';
           else if (route.name === 'FriendsList') iconName = 'people';
           else if (route.name === 'Profile') iconName = 'person';
+          else iconName = 'ellipse';
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="FriendsList" component={FriendsListScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Home">
+        {(props) => <HomeScreen {...(props as any)} />}
+      </Tab.Screen>
+
+      <Tab.Screen name="FriendsList">
+        {(props) => <FriendsListScreen {...(props as any)} />}
+      </Tab.Screen>
+
+      <Tab.Screen name="Profile">
+        {(props) => <ProfileScreen {...(props as any)} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }
@@ -91,23 +92,8 @@ function MainTabs() {
 /* ---------------- AUTH STATE ---------------- */
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
-async function requestAndRegisterPushToken(userId: string): Promise<void> {
-  if (Platform.OS === 'web') return;
-
-  const { status } = await Notifications.requestPermissionsAsync();
-  if (status !== 'granted') return;
-
-  try {
-    const tokenData = await Notifications.getExpoPushTokenAsync();
-    await registerPushToken(userId, tokenData.data);
-  } catch (err) {
-    console.warn('[push] Failed to register push token', err);
-  }
-}
-
 export default function App() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
-  const notifListenerRef = useRef<ReturnType<typeof Notifications.addNotificationResponseReceivedListener> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,6 +101,7 @@ export default function App() {
     async function checkSession() {
       try {
         const stored = await loadAuth();
+
         if (!stored) {
           if (!cancelled) setAuthStatus('unauthenticated');
           return;
@@ -132,12 +119,7 @@ export default function App() {
           clearTimeout(timeout);
 
           if (!cancelled) {
-            if (res.ok) {
-              setAuthStatus('authenticated');
-              void requestAndRegisterPushToken(stored.userID);
-            } else {
-              setAuthStatus('unauthenticated');
-            }
+            setAuthStatus(res.ok ? 'authenticated' : 'unauthenticated');
           }
         } catch {
           clearTimeout(timeout);
@@ -155,28 +137,6 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    notifListenerRef.current = Notifications.addNotificationResponseReceivedListener(response => {
-      const data = response.notification.request.content.data as Record<string, string> | undefined;
-      if (!navigationRef.isReady()) return;
-
-      if (data?.type === 'friend_request') {
-        navigationRef.navigate('MainTabs');
-        // Give the tab navigator a moment to mount before switching tabs
-        setTimeout(() => {
-          if (navigationRef.isReady()) navigationRef.navigate('FriendsList' as any);
-        }, 300);
-      } else if (data?.type === 'session_invite') {
-        navigationRef.navigate('MainTabs');
-      }
-    });
-
-    return () => {
-      notifListenerRef.current?.remove();
-    };
-  }, []);
-
-  /* ---------------- LOADING SCREEN ---------------- */
   if (authStatus === 'loading') {
     return (
       <View style={styles.splash}>
@@ -186,45 +146,67 @@ export default function App() {
     );
   }
 
-  /* ---------------- NAVIGATION ---------------- */
   return (
-    <NavigationContainer ref={navigationRef}>
-      <StatusBar style="auto" />
-      <Stack.Navigator
-        initialRouteName={authStatus === 'authenticated' ? 'MainTabs' : 'Welcome'}
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: colors.background,
-            elevation: 0,
-            shadowOpacity: 0,
-            borderBottomWidth: 0,
-          },
-          headerTintColor: colors.primary,
-          headerTitle: '',
-        }}
-      >
-        {/* AUTH */}
-        <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
+    <ErrorBoundary>
+      <NavigationContainer>
+        <StatusBar style="auto" />
+        <Stack.Navigator
+          initialRouteName={authStatus === 'authenticated' ? 'MainTabs' : 'Welcome'}
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: colors.background,
+              elevation: 0,
+              shadowOpacity: 0,
+              borderBottomWidth: 0,
+            },
+            headerTintColor: colors.primary,
+            headerTitle: '',
+          }}
+        >
+          <Stack.Screen
+            name="Welcome"
+            component={WelcomeScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Signup"
+            component={SignupScreen}
+            options={{ headerShown: false }}
+          />
 
-        {/* MAIN APP (WITH TABS) */}
-        <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+          <Stack.Screen
+            name="MainTabs"
+            component={MainTabs}
+            options={{ headerShown: false }}
+          />
 
-        {/* SESSION SCREENS (NO TAB BAR) */}
-        <Stack.Screen name="JoinSession" component={JoinSessionScreen} />
-        <Stack.Screen name="Lobby" component={LobbyScreen} />
-        <Stack.Screen name="InviteFriends" component={InviteFriendsScreen} />
-        <Stack.Screen name="Game" component={GameScreen} />
-        <Stack.Screen name="Results" component={ResultsScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: false }} />
-      </Stack.Navigator>
-    </NavigationContainer>
+          <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
+          <Stack.Screen name="Discover" component={DiscoverScreen} />
+          <Stack.Screen name="JoinSession" component={JoinSessionScreen} />
+          <Stack.Screen name="Lobby" component={LobbyScreen} />
+          <Stack.Screen name="InviteFriends" component={InviteFriendsScreen} />
+          <Stack.Screen name="Game" component={GameScreen} />
+          <Stack.Screen
+            name="Results"
+            component={ResultsScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="SessionDetail"
+            component={SessionDetailScreen}
+            options={{ headerShown: false }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ErrorBoundary>
   );
 }
 
-/* ---------------- STYLES ---------------- */
 const styles = StyleSheet.create({
   splash: {
     flex: 1,

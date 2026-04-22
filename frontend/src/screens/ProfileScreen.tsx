@@ -6,6 +6,7 @@ import {
   SafeAreaView,
   StatusBar,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -16,7 +17,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { RootStackParamList, TabParamList } from '../../App';
 import { colors } from '../theme/colors';
-import { getUserStats, getUserSessions, updateDisplayName, updateAvatar } from '../api/api';
+import { getUserStats, getUserSessions, updateDisplayName, updateAvatar, getNotificationPreferences, updateNotificationPreferences } from '../api/api';
 import { exportSessionsToCSV } from '../utils/exportCSV';
 import { BACKEND_URL } from '../config/api';
 import type { UserStats, UserSession } from '../types/profile';
@@ -61,6 +62,11 @@ export default function ProfileScreen({ navigation }: Props) {
   const [searchText, setSearchText] = useState('');
   const [winFilter, setWinFilter] = useState<'all' | 'win' | 'loss'>('all');
   const [exporting, setExporting] = useState(false);
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    friendRequests: true,
+    sessionInvites: true,
+  });
+  const [prefsLoading, setPrefsLoading] = useState(false);
 
   const filteredSessions = useMemo(() => {
     return sessions.filter((s) => {
@@ -88,11 +94,13 @@ export default function ProfileScreen({ navigation }: Props) {
         getUserSessions(me.userID as any),
       ]);
 
+      const prefs = await getNotificationPreferences(me.userID);
       setUserId(me.userID as any);
       setUsername(me.username);
       setAvatar(me.avatar ?? null);
       setStats(fetchedStats);
       setSessions(fetchedSessions);
+      setNotificationPrefs(prefs);
     }
 
     load()
@@ -137,6 +145,20 @@ export default function ProfileScreen({ navigation }: Props) {
     } finally {
       setEditLoading(false);
     }
+  }
+
+  async function handlePreferenceToggle(key: 'friendRequests' | 'sessionInvites') {
+    const newPrefs = { ...notificationPrefs, [key]: !notificationPrefs[key] };
+    setNotificationPrefs(newPrefs);
+    setPrefsLoading(true);
+    try {
+      await updateNotificationPreferences(userId, newPrefs);
+    } catch (err: any) {
+      setPrefsLoading(false);
+      Alert.alert('Error', err.message ?? 'Failed to update preferences');
+      setNotificationPrefs(notificationPrefs);
+    }
+    setPrefsLoading(false);
   }
 
   if (loading) {
@@ -230,6 +252,28 @@ export default function ProfileScreen({ navigation }: Props) {
               {formatNet(stats.biggestLoss)}
             </Text>
             <Text style={styles.statLabel}>Biggest Loss</Text>
+          </View>
+        </View>
+
+        <Text style={styles.sectionLabel}>Notification Preferences</Text>
+
+        <View style={styles.preferencesContainer}>
+          <View style={styles.preferenceRow}>
+            <Text style={styles.preferenceLabel}>Friend Requests</Text>
+            <Switch
+              value={notificationPrefs.friendRequests}
+              onValueChange={() => handlePreferenceToggle('friendRequests')}
+              disabled={prefsLoading}
+            />
+          </View>
+
+          <View style={styles.preferenceRow}>
+            <Text style={styles.preferenceLabel}>Session Invites</Text>
+            <Switch
+              value={notificationPrefs.sessionInvites}
+              onValueChange={() => handlePreferenceToggle('sessionInvites')}
+              disabled={prefsLoading}
+            />
           </View>
         </View>
 
@@ -603,5 +647,27 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 13,
     color: colors.placeholder,
+  },
+
+  preferencesContainer: {
+    marginBottom: 24,
+    borderRadius: 8,
+    backgroundColor: colors.cardBackground || 'rgba(255, 255, 255, 0.05)',
+    padding: 16,
+  },
+
+  preferenceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+
+  preferenceLabel: {
+    color: colors.text || '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

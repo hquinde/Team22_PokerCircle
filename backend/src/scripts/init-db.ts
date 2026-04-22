@@ -36,6 +36,7 @@ const initDb = async () => {
         password_hash TEXT NOT NULL,
         total_balance BIGINT DEFAULT 0,
         avatar TEXT,
+        push_token TEXT,
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );

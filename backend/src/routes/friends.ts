@@ -80,8 +80,8 @@ router.post('/request', requireAuth, asyncHandler(async (req: Request, res: Resp
   if (result.rows.length === 0) return res.status(409).json({ error: 'Friend request already sent.' });
 
   const [requesterRow, addresseeRow] = await Promise.all([
-    pool.query<{ username: string }>('SELECT username FROM users WHERE "userID" = $1', [requesterId]),
-    pool.query<{ push_token: string | null }>('SELECT push_token FROM users WHERE "userID" = $1', [addresseeId]),
+    pool.query<{ username: string }>('SELECT username FROM users WHERE user_id = $1', [requesterId]),
+    pool.query<{ push_token: string | null }>('SELECT push_token FROM users WHERE user_id = $1', [addresseeId]),
   ]);
   const requesterUsername = requesterRow.rows[0]?.username ?? 'Someone';
   const addresseePushToken = addresseeRow.rows[0]?.push_token ?? null;

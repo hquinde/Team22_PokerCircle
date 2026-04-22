@@ -215,7 +215,7 @@ router.patch(
     }
 
     await pool.query(
-      `UPDATE users SET push_token = $1 WHERE "userID" = $2`,
+      `UPDATE users SET push_token = $1 WHERE user_id = $2`,
       [token ?? null, userId]
     );
 

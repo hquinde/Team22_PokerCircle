@@ -107,25 +107,10 @@ router.post(
       const sessionCode = generateSessionCode(6);
       try {
         const result = await pool.query(
-          `INSERT INTO game_sessions 
+          `INSERT INTO game_sessions
           (session_code, host_user_id, buy_in_amount, max_rebuys, privacy)
           VALUES ($1, $2, $3, $4, $5)
           RETURNING session_code, created_at, host_user_id, buy_in_amount, max_rebuys, privacy;`,
-          [sessionCode, hostUserId, buyInAmount, maxRebuys, 'private']
-        );
-        const row = result.rows[0];
-        return res.status(201).json({
-        sessionCode: row.session_code,
-        createdAt: row.created_at,
-        hostUserId: row.host_user_id,
-        buyInAmount: row.buy_in_amount,
-        maxRebuys: row.max_rebuys,
-        privacy: row.privacy,
-        players: [],
-});
-          `INSERT INTO game_sessions (session_code, host_user_id, buy_in_amount, max_rebuys, privacy)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING session_code, created_at, host_user_id, buy_in_amount, max_rebuys, privacy;`,
           [sessionCode, hostUserId, buyInAmount, maxRebuys, privacy]
         );
         const row = result.rows[0];
@@ -195,20 +180,14 @@ router.get(
     const players = result.rows.filter((r) => r['playerId'] !== null).map(mapPlayerRow);
 
     return res.status(200).json({
-    sessionCode: first['sessionCode'],
-    createdAt: first['createdAt'],
-    hostUserId: first['hostUserId'],
-    status: first['status'],
-    buyInAmount: first['buyInAmount'],
-    maxRebuys: first['maxRebuys'],
-    smallBlind: first['smallBlind'],
-    bigBlind: first['bigBlind'],
-    privacy: first['privacy'],
-    players,
       sessionCode: first['sessionCode'],
       createdAt: first['createdAt'],
       hostUserId: first['hostUserId'],
       status: first['status'],
+      buyInAmount: first['buyInAmount'],
+      maxRebuys: first['maxRebuys'],
+      smallBlind: first['smallBlind'],
+      bigBlind: first['bigBlind'],
       privacy: first['privacy'],
       players,
     });

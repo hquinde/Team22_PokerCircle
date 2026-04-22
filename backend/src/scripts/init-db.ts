@@ -47,6 +47,7 @@ const initDb = async () => {
         session_code TEXT PRIMARY KEY,
         host_user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
         status TEXT NOT NULL DEFAULT 'waiting',
+        privacy TEXT NOT NULL DEFAULT 'private',
         buy_in_amount INTEGER NOT NULL DEFAULT 0,
         max_rebuys INTEGER NOT NULL DEFAULT 0,
         game_state JSONB NOT NULL DEFAULT '{}',

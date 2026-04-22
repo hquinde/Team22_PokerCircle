@@ -22,10 +22,17 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import SessionDetailScreen from './src/screens/SessionDetailScreen';
 
 import LeaderboardScreen from './src/screens/LeaderboardScreen';
+import DiscoverScreen from './src/screens/DiscoverScreen';
 import { BACKEND_URL } from './src/config/api';
 import { loadAuth } from './src/services/authStorage';
 import { colors } from './src/theme/colors';
 import { registerPushToken } from './src/api/api';
+
+export type TabParamList = {
+  Home: undefined;
+  FriendsList: undefined;
+  Profile: undefined;
+};
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -38,13 +45,12 @@ export type RootStackParamList = {
   Game: { sessionCode: string; buyInAmount?: number };
   Results: { sessionCode: string };
   SessionDetail: { sessionCode: string };
-  FriendsList: undefined;
-  Profile: undefined;
   Leaderboard: undefined;
+  Discover: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<TabParamList>();
 
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
@@ -62,7 +68,7 @@ Notifications.setNotificationHandler({
 function MainTabs() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={({ route }: { route: { name: keyof TabParamList } }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: 'gray',
@@ -70,7 +76,7 @@ function MainTabs() {
           backgroundColor: colors.background,
           borderTopWidth: 0,
         },
-        tabBarIcon: ({ color, size }) => {
+        tabBarIcon: ({ color, size }: { color: string; size: number }) => {
           let iconName: any;
 
           if (route.name === 'Home') iconName = 'home';
@@ -156,7 +162,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    notifListenerRef.current = Notifications.addNotificationResponseReceivedListener(response => {
+    notifListenerRef.current = Notifications.addNotificationResponseReceivedListener((response: Notifications.NotificationResponse) => {
       const data = response.notification.request.content.data as Record<string, string> | undefined;
       if (!navigationRef.isReady()) return;
 
@@ -219,6 +225,7 @@ export default function App() {
         <Stack.Screen name="Results" component={ResultsScreen} options={{ headerShown: false }} />
         <Stack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

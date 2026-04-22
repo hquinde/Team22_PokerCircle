@@ -23,6 +23,7 @@ export interface Session {
   createdAt: string;
   hostUserId: string;
   status: SessionStatus;
+  privacy: 'public' | 'private';
   buyInAmount: number;
   maxRebuys: number;
   players: Player[];

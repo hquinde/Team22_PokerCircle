@@ -19,6 +19,17 @@ export type SettlementResults = {
   transactions: SettlementTransaction[];
 };
 
+export type PublicSessionInfo = {
+  sessionCode: string;
+  createdAt: string;
+  hostUserId: string;
+  hostUsername: string;
+  hostAvatar: string | null;
+  buyInAmount: number;
+  maxRebuys: number;
+  playerCount: number;
+};
+
 // ---------------------------------------------------------------------------
 // Sessions
 // ---------------------------------------------------------------------------
@@ -38,19 +49,31 @@ export async function getSession(sessionCode: string): Promise<Session> {
 
 export async function createSession(
   buyInAmount = 0,
-  maxRebuys = 0
+  maxRebuys = 0,
+  privacy: 'public' | 'private' = 'private'
 ): Promise<Session> {
   const response = await fetch(`${BACKEND_URL}/api/sessions`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ buyInAmount, maxRebuys }),
+    body: JSON.stringify({ buyInAmount, maxRebuys, privacy }),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => ({})) as { error?: string };
     throw new Error(body.error ?? 'Failed to create session');
   }
   return response.json() as Promise<Session>;
+}
+
+export async function getPublicSessions(): Promise<PublicSessionInfo[]> {
+  const response = await fetch(`${BACKEND_URL}/api/sessions/public`, {
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch public sessions');
+  }
+  const data = await response.json() as { sessions: PublicSessionInfo[] };
+  return data.sessions;
 }
 
 export async function startSession(sessionCode: string): Promise<Session> {

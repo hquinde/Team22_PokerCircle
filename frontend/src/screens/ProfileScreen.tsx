@@ -12,7 +12,9 @@ import {
   View,
 } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
-import type { RootStackParamList } from '../../App';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { RootStackParamList, TabParamList } from '../../App';
 import { colors } from '../theme/colors';
 import { getUserStats, getUserSessions, updateDisplayName, updateAvatar } from '../api/api';
 import { exportSessionsToCSV } from '../utils/exportCSV';
@@ -21,7 +23,10 @@ import type { UserStats, UserSession } from '../types/profile';
 import AvatarDisplay from '../components/AvatarDisplay';
 import AvatarPickerModal from '../components/AvatarPickerModal';
 
-type Props = StackScreenProps<RootStackParamList, 'Profile'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<TabParamList, 'Profile'>,
+  StackScreenProps<RootStackParamList>
+>;
 
 function formatNet(value: number): string {
   const abs = Math.abs(value).toFixed(2);

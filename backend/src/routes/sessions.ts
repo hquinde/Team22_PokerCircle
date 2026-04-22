@@ -41,6 +41,32 @@ router.get('/', (_req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/sessions/public — list all open public sessions
+// ---------------------------------------------------------------------------
+router.get(
+  '/public',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const result = await pool.query(
+      `SELECT
+         gs.session_code    AS "sessionCode",
+         gs.created_at      AS "createdAt",
+         gs.host_user_id    AS "hostUserId",
+         gs.buy_in_amount    AS "buyInAmount",
+         gs.max_rebuys      AS "maxRebuys",
+         u.username         AS "hostUsername",
+         u.avatar           AS "hostAvatar",
+         (SELECT COUNT(*) FROM session_players WHERE session_code = gs.session_code)::int AS "playerCount"
+       FROM game_sessions gs
+       JOIN users u ON u.user_id = gs.host_user_id
+       WHERE gs.privacy = 'public' AND gs.status = 'waiting'
+       ORDER BY gs.created_at DESC;`
+    );
+
+    return res.status(200).json({ sessions: result.rows });
+  })
+);
+
+// ---------------------------------------------------------------------------
 // POST /api/sessions — create a new session
 // ---------------------------------------------------------------------------
 router.post(
@@ -48,9 +74,10 @@ router.post(
   requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
     const hostUserId = req.session.userId!;
-    const { buyInAmount = 0, maxRebuys = 0 } = req.body as {
+    const { buyInAmount = 0, maxRebuys = 0, privacy = 'private' } = req.body as {
       buyInAmount?: number;
       maxRebuys?: number;
+      privacy?: 'public' | 'private';
     };
     let attempts = 0;
 
@@ -58,10 +85,10 @@ router.post(
       const sessionCode = generateSessionCode(6);
       try {
         const result = await pool.query(
-          `INSERT INTO game_sessions (session_code, host_user_id, buy_in_amount, max_rebuys)
-           VALUES ($1, $2, $3, $4)
-           RETURNING session_code, created_at, host_user_id, buy_in_amount, max_rebuys;`,
-          [sessionCode, hostUserId, buyInAmount, maxRebuys]
+          `INSERT INTO game_sessions (session_code, host_user_id, buy_in_amount, max_rebuys, privacy)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING session_code, created_at, host_user_id, buy_in_amount, max_rebuys, privacy;`,
+          [sessionCode, hostUserId, buyInAmount, maxRebuys, privacy]
         );
         const row = result.rows[0];
         return res.status(201).json({
@@ -70,6 +97,7 @@ router.post(
           hostUserId: row.host_user_id,
           buyInAmount: row.buy_in_amount,
           maxRebuys: row.max_rebuys,
+          privacy: row.privacy,
           players: [],
         });
       } catch (err: unknown) {
@@ -95,6 +123,7 @@ router.get(
          gs.created_at      AS "createdAt",
          gs.host_user_id    AS "hostUserId",
          gs.status,
+         gs.privacy,
          gs.buy_in_amount    AS "buyInAmount",
          gs.max_rebuys      AS "maxRebuys",
          p.id               AS "playerId",
@@ -127,6 +156,7 @@ router.get(
       createdAt: first['createdAt'],
       hostUserId: first['hostUserId'],
       status: first['status'],
+      privacy: first['privacy'],
       players,
     });
   })

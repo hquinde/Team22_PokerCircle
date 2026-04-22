@@ -12,6 +12,7 @@ import {
   updateSessionStatus,
   updatePlayerFinances,
 } from '../store/sessionDbStore';
+import { sendPushNotification } from '../utils/pushNotification';
 
 const router = Router();
 
@@ -698,6 +699,40 @@ router.post(
     );
     const inviterUsername: string = inviterResult.rows[0]?.username ?? 'Unknown';
     io.to(`user:${inviteeId}`).emit('user:invite', { ...invite, inviterUsername });
+
+    // Fetch invitee's notification preferences and push token
+    void (async () => {
+      try {
+        const prefsResult = await pool.query(
+          'SELECT notification_preferences FROM users WHERE user_id = $1',
+          [inviteeId]
+        );
+
+        // Extract sessionInvites preference, default to true if null or missing
+        const prefs = prefsResult.rows[0]?.notification_preferences || {};
+        const shouldSendPush = prefs.sessionInvites !== false;
+
+        if (shouldSendPush) {
+          // Fetch push token
+          const tokenResult = await pool.query(
+            'SELECT push_token FROM users WHERE user_id = $1',
+            [inviteeId]
+          );
+
+          const pushToken = tokenResult.rows[0]?.push_token;
+          if (pushToken) {
+            await sendPushNotification(
+              pushToken,
+              'Session Invite',
+              `${inviterUsername} invited you to a session`,
+              { type: 'session_invite' }
+            );
+          }
+        }
+      } catch (err) {
+        console.error('Error sending session invite push notification:', err);
+      }
+    })();
 
     return res.status(isNew ? 201 : 200).json({ ...invite, inviterUsername });
   })

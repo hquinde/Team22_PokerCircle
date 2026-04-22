@@ -124,6 +124,8 @@ router.get(
          gs.status,
          gs.buy_in_amount   AS "buyInAmount",
          gs.max_rebuys      AS "maxRebuys",
+         gs.small_blind     AS "smallBlind",
+         gs.big_blind       AS "bigBlind",
          gs.privacy         AS "privacy",
          p.id               AS "playerId",
          p.display_name     AS "displayName",
@@ -155,6 +157,8 @@ router.get(
     status: first['status'],
     buyInAmount: first['buyInAmount'],
     maxRebuys: first['maxRebuys'],
+    smallBlind: first['smallBlind'],
+    bigBlind: first['bigBlind'],
     privacy: first['privacy'],
     players,
     });
@@ -288,130 +292,128 @@ router.post(
 );
 
 // ---------------------------------------------------------------------------
-// POST /api/sessions/:sessionCode/start  (host only)
+// PATCH /api/sessions/:sessionCode/settings  (HOST ONLY)
 // ---------------------------------------------------------------------------
-router.post(
-  '/:sessionCode/start',
+router.patch(
+  '/:sessionCode/settings',
   requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    const sessionCode = (req.params as { sessionCode: string }).sessionCode;
+    const { sessionCode } = req.params as { sessionCode: string };
+    const hostUserId = req.session.userId!;
+    const body = req.body as {
+      buyInAmount?: number;
+      maxRebuys?: number;
+      smallBlind?: number;
+      bigBlind?: number;
+    };
 
-    const result = await pool.query(
-      `SELECT
-         gs.host_user_id  AS "hostUserId",
-         gs.status,
-         u.username       AS "hostUsername",
-         p.display_name   AS "displayName",
-         p.is_ready       AS "isReady"
-       FROM game_sessions gs
-       JOIN users u ON u.user_id = gs.host_user_id
-       LEFT JOIN session_players p ON p.session_code = gs.session_code
-       WHERE gs.session_code = $1`,
+    const sessionResult = await pool.query(
+      `SELECT host_user_id
+       FROM game_sessions
+       WHERE session_code = $1`,
       [sessionCode]
     );
 
-    if (result.rows.length === 0) {
+    if (sessionResult.rows.length === 0) {
       return res.status(404).json({ error: 'Session not found' });
     }
 
-    if (result.rows[0]['hostUserId'] !== req.session.userId) {
-      return res.status(403).json({ error: 'Only the host can start the game' });
+    if (sessionResult.rows[0]['host_user_id'] !== hostUserId) {
+      return res.status(403).json({ error: 'Only the host can edit session settings' });
     }
 
-    const players = result.rows.filter((r) => r['displayName'] !== null);
+    const buyInAmount = body.buyInAmount ?? 0;
+    const maxRebuys = body.maxRebuys ?? 0;
+    const smallBlind = body.smallBlind ?? 0;
+    const bigBlind = body.bigBlind ?? 0;
 
-    if (players.length < 2) {
-      return res.status(400).json({ error: 'At least 2 players are required to start the game' });
-    }
-
-    const hostUsername = result.rows[0]['hostUsername'] as string;
-
-    const notReady = players.filter(
-      (p) => !p['isReady'] && p['displayName'] !== hostUsername
+    const result = await pool.query(
+      `UPDATE game_sessions
+       SET buy_in_amount = $2,
+           max_rebuys = $3,
+           small_blind = $4,
+           big_blind = $5
+       WHERE session_code = $1
+       RETURNING
+         session_code AS "sessionCode",
+         buy_in_amount AS "buyInAmount",
+         max_rebuys AS "maxRebuys",
+         small_blind AS "smallBlind",
+         big_blind AS "bigBlind"`,
+      [sessionCode, buyInAmount, maxRebuys, smallBlind, bigBlind]
     );
 
-    if (notReady.length > 0) {
-      return res.status(400).json({
-        error: `Not all players are ready (${notReady.map((p) => p['displayName'] as string).join(', ')})`,
-      });
-    }
+    const updated = result.rows[0];
 
-    await pool.query(
-      "UPDATE game_sessions SET status = 'active' WHERE session_code = $1",
-      [sessionCode]
-    );
+    const io = req.app.get('io');
+    io.to(sessionCode).emit('session:settingsUpdated', updated);
 
-    const io: Server = req.app.get('io');
-    io.to(sessionCode).emit('game:start', { sessionCode });
-
-    return res.status(200).json({ message: 'Game started', sessionCode });
+    return res.status(200).json(updated);
   })
 );
+
 
 // ---------------------------------------------------------------------------
 // PATCH /api/sessions/:sessionCode/players/:displayName/finances  (TM22-87)
 // ---------------------------------------------------------------------------
 router.patch(
-  '/:sessionCode/players/:displayName/finances',
+  '/:sessionCode/settings',
+  requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    const { sessionCode, displayName } = req.params as {
-      sessionCode: string;
-      displayName: string;
-    };
+    const { sessionCode } = req.params as { sessionCode: string };
+    const hostUserId = req.session.userId!;
     const body = req.body as {
-      buyIn?: number;
-      rebuyTotal?: number;
-      cashOut?: number;
+      buyInAmount?: number;
+      maxRebuys?: number;
+      smallBlind?: number;
+      bigBlind?: number;
     };
 
-    const finances: { buyIn?: number; rebuyTotal?: number; cashOut?: number } = {};
-    if (body.buyIn !== undefined) finances.buyIn = body.buyIn;
-    if (body.rebuyTotal !== undefined) finances.rebuyTotal = body.rebuyTotal;
-    if (body.cashOut !== undefined) finances.cashOut = body.cashOut;
+    const sessionResult = await pool.query(
+      `SELECT host_user_id
+       FROM game_sessions
+       WHERE session_code = $1`,
+      [sessionCode]
+    );
 
-    if (finances.rebuyTotal !== undefined && finances.rebuyTotal > 0) {
-      const limitsResult = await pool.query(
-        `SELECT gs.max_rebuys, gs.buy_in_amount
-         FROM game_sessions gs
-         WHERE gs.session_code = $1`,
-        [sessionCode]
-      );
-      const maxRebuys: number = limitsResult.rows[0]?.max_rebuys ?? 0;
-      const buyInAmount: number = limitsResult.rows[0]?.buy_in_amount ?? 0;
-
-      if (maxRebuys > 0 && buyInAmount > 0) {
-        const impliedCount = Math.round(finances.rebuyTotal / buyInAmount);
-        if (impliedCount > maxRebuys) {
-          return res.status(400).json({
-            error: `Max rebuys is ${maxRebuys}. You cannot exceed that limit.`,
-          });
-        }
-      }
+    if (sessionResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Session not found' });
     }
 
-    const success = await updatePlayerFinances(sessionCode, displayName, finances);
-
-    if (!success) {
-      return res.status(404).json({ error: 'Player or session not found' });
+    if (sessionResult.rows[0]['host_user_id'] !== hostUserId) {
+      return res.status(403).json({ error: 'Only the host can edit session settings' });
     }
 
-    const session = await getSessionWithPlayers(sessionCode);
-    if (session) {
-      const io: Server = req.app.get('io');
-      const payload: FinanceUpdatePayload = {
-        sessionCode,
-        players: session.players,
-      };
-      io.to(sessionCode).emit('finance:update', payload);
-    }
+    const buyInAmount = body.buyInAmount ?? 0;
+    const maxRebuys = body.maxRebuys ?? 0;
+    const smallBlind = body.smallBlind ?? 0;
+    const bigBlind = body.bigBlind ?? 0;
 
-    return res.status(200).json({
-      message: 'Player finances updated',
-      sessionCode,
-      displayName,
-    });
+    const result = await pool.query(
+      `UPDATE game_sessions
+       SET buy_in_amount = $2,
+           max_rebuys = $3,
+           small_blind = $4,
+           big_blind = $5
+       WHERE session_code = $1
+       RETURNING
+         session_code AS "sessionCode",
+         buy_in_amount AS "buyInAmount",
+         max_rebuys AS "maxRebuys",
+         small_blind AS "smallBlind",
+         big_blind AS "bigBlind"`,
+      [sessionCode, buyInAmount, maxRebuys, smallBlind, bigBlind]
+    );
+
+    const updated = result.rows[0];
+
+    const io = req.app.get('io');
+    io.to(sessionCode).emit('session:settingsUpdated', updated);
+
+    return res.status(200).json(updated);
   })
 );
+
 
 // ---------------------------------------------------------------------------
 // DELETE /api/sessions/:sessionCode/players/:displayName  (HOST ONLY)

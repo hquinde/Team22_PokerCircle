@@ -6,8 +6,6 @@ export interface GameState {
 
 export interface Player {
   playerId: string;
-  /** In-memory socket store uses `name`; DB responses use `displayName`.
-   *  Keep both optional so both code paths compile. */
   name?: string;
   displayName?: string;
   joinedAt: string;
@@ -25,6 +23,8 @@ export interface Session {
   status: SessionStatus;
   buyInAmount: number;
   maxRebuys: number;
-  privacy: 'public' | 'private'; // ✅ ADDED THIS LINE
+  smallBlind?: number;
+  bigBlind?: number;
+  privacy: 'public' | 'private';
   players: Player[];
 }

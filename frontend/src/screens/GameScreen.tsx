@@ -1,22 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
   View,
+  Text,
+  Pressable,
+  ScrollView,
+  KeyboardAvoidingView,
+  SafeAreaView,
+  Alert,
+  ActivityIndicator,
+  Platform,
+  Modal,
+  TextInput,
+  FlatList,
+  StyleSheet,
 } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { colors } from '../theme/colors';
-import { completeSession, getSession, updatePlayerFinances } from '../api/api';
+import { completeSession, getSession, updatePlayerFinances, updateSessionSettings } from '../api/api';
 import { socket } from '../services/socket';
 import { BACKEND_URL } from '../config/api';
 import type { Player } from '../types/session';
@@ -133,20 +134,30 @@ export default function GameScreen({ route, navigation }: Props) {
   const { sessionCode } = route.params;
 
   const [players, setPlayers] = useState<Player[]>([]);
-  const [isHost, setIsHost] = useState(false);
-  const [isEnding, setIsEnding] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [myPlayerName, setMyPlayerName] = useState<string | null>(null);
-  const [buyInAmount, setBuyInAmount] = useState(0);
-  const [maxRebuys, setMaxRebuys] = useState(0);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [isReconnecting, setIsReconnecting] = useState(false);
+const [isHost, setIsHost] = useState(false);
+const [isEnding, setIsEnding] = useState(false);
+const [loading, setLoading] = useState(true);
+const [myPlayerName, setMyPlayerName] = useState<string | null>(null);
 
-  const [buyIn, setBuyIn] = useState('');
-  const [rebuy, setRebuy] = useState('');
-  const [cashOut, setCashOut] = useState('');
-  const [isUpdatingFinances, setIsUpdatingFinances] = useState(false);
-  const [financeError, setFinanceError] = useState<string | null>(null);
+const [buyInAmount, setBuyInAmount] = useState(0);
+const [maxRebuys, setMaxRebuys] = useState(0);
+const [smallBlind, setSmallBlind] = useState(0);
+const [bigBlind, setBigBlind] = useState(0);
+const [saveSuccess, setSaveSuccess] = useState(false);
+const [isReconnecting, setIsReconnecting] = useState(false);
+
+const [buyIn, setBuyIn] = useState('');
+const [rebuy, setRebuy] = useState('');
+const [cashOut, setCashOut] = useState('');
+const [isUpdatingFinances, setIsUpdatingFinances] = useState(false);
+const [financeError, setFinanceError] = useState<string | null>(null);
+
+const [showEditSettingsModal, setShowEditSettingsModal] = useState(false);
+const [editBuyIn, setEditBuyIn] = useState('');
+const [editMaxRebuys, setEditMaxRebuys] = useState('');
+const [editSmallBlind, setEditSmallBlind] = useState('');
+const [editBigBlind, setEditBigBlind] = useState('');
+const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   // Derived rebuy count for the current user
   const myRebuyCount =
@@ -185,6 +196,20 @@ export default function GameScreen({ route, navigation }: Props) {
       setPlayers(payload.players);
     };
 
+    const handleSettingsUpdated = (payload: {
+  sessionCode: string;
+  buyInAmount: number;
+  maxRebuys: number;
+  smallBlind: number;
+  bigBlind: number;
+}) => {
+  if (payload.sessionCode !== sessionCodeRef.current) return;
+  setBuyInAmount(payload.buyInAmount);
+  setMaxRebuys(payload.maxRebuys);
+  setSmallBlind(payload.smallBlind);
+  setBigBlind(payload.bigBlind);
+};
+
     const handleComplete = (payload: { sessionCode: string }) => {
       if (!active) return;
       navigation.replace('Results', { sessionCode: payload.sessionCode });
@@ -217,6 +242,7 @@ export default function GameScreen({ route, navigation }: Props) {
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on('finance:update', handleFinanceUpdate);
+    socket.on('session:settingsUpdated', handleSettingsUpdated);
     socket.on('game:complete', handleComplete);
     socket.on('player:removed', handlePlayerRemoved);
 
@@ -242,6 +268,8 @@ export default function GameScreen({ route, navigation }: Props) {
         setPlayers(sessionRes.players);
         setBuyInAmount(sessionRes.buyInAmount ?? 0);
         setMaxRebuys(sessionRes.maxRebuys ?? 0);
+        setSmallBlind(sessionRes.smallBlind ?? 0);
+        setBigBlind(sessionRes.bigBlind ?? 0);
 
         const me = sessionRes.players.find(
           (p) => ((p.displayName ?? p.name ?? '').trim() === auth.username.trim()),
@@ -365,6 +393,25 @@ export default function GameScreen({ route, navigation }: Props) {
     }
   }
 
+  async function handleSaveSettings() {
+  try {
+    setIsSavingSettings(true);
+
+    await updateSessionSettings(sessionCode, {
+      buyInAmount: parseFloat(editBuyIn) || 0,
+      maxRebuys: parseInt(editMaxRebuys, 10) || 0,
+      smallBlind: parseFloat(editSmallBlind) || 0,
+      bigBlind: parseFloat(editBigBlind) || 0,
+    });
+
+    setShowEditSettingsModal(false);
+  } catch (err) {
+    Alert.alert('Error', 'Could not update settings');
+  } finally {
+    setIsSavingSettings(false);
+  }
+}
+
   async function handleEndSession() {
     const confirmed =
       Platform.OS === 'web'
@@ -449,6 +496,21 @@ export default function GameScreen({ route, navigation }: Props) {
                 </View>
               </View>
             )}
+            {isHost && (
+  <Pressable
+    style={styles.secondaryButton}
+    onPress={() => {
+      setEditBuyIn(String(buyInAmount ?? 0));
+      setEditMaxRebuys(String(maxRebuys ?? 0));
+      setEditSmallBlind(String(smallBlind ?? 0));
+      setEditBigBlind(String(bigBlind ?? 0));
+      setShowEditSettingsModal(true);
+    }}
+  >
+    <Text style={styles.secondaryButtonText}>Edit Session Settings</Text>
+  </Pressable>
+)}
+            
           </View>
 
           <View style={styles.sectionHeader}>
@@ -469,7 +531,7 @@ export default function GameScreen({ route, navigation }: Props) {
 
           <FlatList
             data={players}
-            renderItem={({ item }) => {
+            renderItem={({ item }: { item: Player }) => {
               const displayName = (item.displayName ?? item.name ?? '').trim();
               const isMe = displayName === (myPlayerName ?? '').trim();
               const canRemove = isHost && !isMe;
@@ -484,7 +546,7 @@ export default function GameScreen({ route, navigation }: Props) {
                 />
               );
             }}
-            keyExtractor={(p) =>
+            keyExtractor={(p: Player) =>
               p.playerId || (p.displayName ?? p.name)?.trim() || Math.random().toString()
             }
             contentContainerStyle={styles.playerList}
@@ -650,6 +712,27 @@ export default function GameScreen({ route, navigation }: Props) {
               </Pressable>
             </View>
           )}
+          <Modal
+  visible={showEditSettingsModal}
+  transparent
+  animationType="fade"
+  onRequestClose={() => setShowEditSettingsModal(false)}
+>
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalCard}>
+      <Text style={styles.modalTitle}>Edit Session Settings</Text>
+
+      <TextInput style={styles.modalInput} value={editBuyIn} onChangeText={setEditBuyIn} />
+      <TextInput style={styles.modalInput} value={editMaxRebuys} onChangeText={setEditMaxRebuys} />
+      <TextInput style={styles.modalInput} value={editSmallBlind} onChangeText={setEditSmallBlind} />
+      <TextInput style={styles.modalInput} value={editBigBlind} onChangeText={setEditBigBlind} />
+
+      <Pressable style={styles.primaryButton} onPress={handleSaveSettings}>
+        <Text style={styles.primaryButtonText}>Save</Text>
+      </Pressable>
+    </View>
+  </View>
+</Modal>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -681,6 +764,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.inputBorder,
   },
+  primaryButton: {
+  backgroundColor: colors.primary,
+  borderRadius: 8,
+  paddingVertical: 12,
+  paddingHorizontal: 16,
+  alignItems: 'center',
+  marginTop: 12,
+},
+
+primaryButtonText: {
+  color: colors.textOnPrimary,
+  fontWeight: '700',
+},
   codeLabel: {
     fontSize: 10,
     color: colors.placeholder,
@@ -1069,5 +1165,52 @@ const styles = StyleSheet.create({
 reconnectText: {
   color: '#000',
   fontWeight: '600',
+},
+
+secondaryButton: {
+  backgroundColor: '#ffffff',
+  borderWidth: 1,
+  borderColor: colors.primary,
+  borderRadius: 8,
+  paddingVertical: 12,
+  paddingHorizontal: 16,
+  alignItems: 'center',
+  marginTop: 12,
+},
+
+secondaryButtonText: {
+  color: colors.primary,
+  fontWeight: '700',
+},
+
+modalOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0,0,0,0.4)',
+  justifyContent: 'center',
+  padding: 24,
+},
+
+modalCard: {
+  backgroundColor: '#ffffff',
+  borderRadius: 12,
+  padding: 20,
+},
+
+modalTitle: {
+  color: colors.text,
+  fontSize: 18,
+  fontWeight: '700',
+  marginBottom: 16,
+},
+
+modalInput: {
+  borderWidth: 1,
+  borderColor: '#cccccc',
+  borderRadius: 8,
+  paddingHorizontal: 12,
+  paddingVertical: 10,
+  marginBottom: 12,
+  color: colors.text,
+  backgroundColor: '#ffffff',
 },
 });

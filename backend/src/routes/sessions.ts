@@ -12,7 +12,6 @@ import {
   updateSessionStatus,
   updatePlayerFinances,
 } from '../store/sessionDbStore';
-import { sendPushNotification } from '../utils/pushNotification';
 
 const router = Router();
 
@@ -22,14 +21,14 @@ const router = Router();
 // ---------------------------------------------------------------------------
 function mapPlayerRow(r: Record<string, unknown>) {
   return {
-    playerId:    String(r['playerId']    ?? r['id']),
-    displayName: r['displayName']        as string,
-    joinedAt:    r['joinedAt']           as string,
-    isReady:     (r['isReady'] as boolean) ?? false,
-    buyIn:       (r['buyIn']    as number) ?? 0,
-    rebuyTotal:  (r['rebuyTotal'] as number) ?? 0,
-    cashOut:     (r['cashOut']  as number) ?? 0,
-    avatar:      (r['avatar']   ?? null)  as string | null,
+    playerId: String(r['playerId'] ?? r['id']),
+    displayName: r['displayName'] as string,
+    joinedAt: r['joinedAt'] as string,
+    isReady: (r['isReady'] as boolean) ?? false,
+    buyIn: (r['buyIn'] as number) ?? 0,
+    rebuyTotal: (r['rebuyTotal'] as number) ?? 0,
+    cashOut: (r['cashOut'] as number) ?? 0,
+    avatar: (r['avatar'] ?? null) as string | null,
   };
 }
 
@@ -40,6 +39,29 @@ router.get('/', (_req, res) => {
   res.json({ status: 'ok', message: 'sessions route reachable' });
 });
 
+router.get(
+  '/public',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const result = await pool.query(`
+      SELECT 
+        gs.session_code,
+        gs.host_user_id,
+        gs.buy_in_amount,
+        gs.max_rebuys,
+        gs.privacy,
+        (
+          SELECT COUNT(*) 
+          FROM session_players sp 
+          WHERE sp.session_code = gs.session_code
+        ) AS player_count
+      FROM game_sessions gs
+      WHERE gs.privacy = 'public' AND gs.status = 'waiting'
+      ORDER BY gs.created_at DESC;
+    `);
+
+    return res.status(200).json(result.rows);
+  })
+);
 // ---------------------------------------------------------------------------
 // GET /api/sessions/public — list all open public sessions
 // ---------------------------------------------------------------------------
@@ -85,6 +107,22 @@ router.post(
       const sessionCode = generateSessionCode(6);
       try {
         const result = await pool.query(
+          `INSERT INTO game_sessions 
+          (session_code, host_user_id, buy_in_amount, max_rebuys, privacy)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING session_code, created_at, host_user_id, buy_in_amount, max_rebuys, privacy;`,
+          [sessionCode, hostUserId, buyInAmount, maxRebuys, 'private']
+        );
+        const row = result.rows[0];
+        return res.status(201).json({
+        sessionCode: row.session_code,
+        createdAt: row.created_at,
+        hostUserId: row.host_user_id,
+        buyInAmount: row.buy_in_amount,
+        maxRebuys: row.max_rebuys,
+        privacy: row.privacy,
+        players: [],
+});
           `INSERT INTO game_sessions (session_code, host_user_id, buy_in_amount, max_rebuys, privacy)
            VALUES ($1, $2, $3, $4, $5)
            RETURNING session_code, created_at, host_user_id, buy_in_amount, max_rebuys, privacy;`,
@@ -101,7 +139,10 @@ router.post(
           players: [],
         });
       } catch (err: unknown) {
-        if ((err as { code?: string })?.code === '23505') { attempts++; continue; }
+        if ((err as { code?: string })?.code === '23505') {
+          attempts++;
+          continue;
+        }
         throw err;
       }
     }
@@ -123,9 +164,11 @@ router.get(
          gs.created_at      AS "createdAt",
          gs.host_user_id    AS "hostUserId",
          gs.status,
+         gs.buy_in_amount   AS "buyInAmount",
          gs.privacy,
          gs.buy_in_amount    AS "buyInAmount",
          gs.max_rebuys      AS "maxRebuys",
+         gs.privacy         AS "privacy",
          p.id               AS "playerId",
          p.display_name     AS "displayName",
          p.joined_at        AS "joinedAt",
@@ -147,11 +190,17 @@ router.get(
     }
 
     const first = result.rows[0];
-    const players = result.rows
-      .filter((r) => r['playerId'] !== null)
-      .map(mapPlayerRow);
+    const players = result.rows.filter((r) => r['playerId'] !== null).map(mapPlayerRow);
 
     return res.status(200).json({
+    sessionCode: first['sessionCode'],
+    createdAt: first['createdAt'],
+    hostUserId: first['hostUserId'],
+    status: first['status'],
+    buyInAmount: first['buyInAmount'],
+    maxRebuys: first['maxRebuys'],
+    privacy: first['privacy'],
+    players,
       sessionCode: first['sessionCode'],
       createdAt: first['createdAt'],
       hostUserId: first['hostUserId'],
@@ -235,9 +284,7 @@ router.post(
     );
 
     const first = stateResult.rows[0];
-    const players = stateResult.rows
-      .filter((r) => r['playerId'] !== null)
-      .map(mapPlayerRow);
+    const players = stateResult.rows.filter((r) => r['playerId'] !== null).map(mapPlayerRow);
 
     return res.status(200).json({
       sessionCode: first['sessionCode'],
@@ -367,14 +414,11 @@ router.patch(
       cashOut?: number;
     };
 
-    // exactOptionalPropertyTypes: true means we cannot pass `undefined` explicitly —
-    // only include keys that are actually present in the request body.
     const finances: { buyIn?: number; rebuyTotal?: number; cashOut?: number } = {};
-    if (body.buyIn      !== undefined) finances.buyIn      = body.buyIn;
+    if (body.buyIn !== undefined) finances.buyIn = body.buyIn;
     if (body.rebuyTotal !== undefined) finances.rebuyTotal = body.rebuyTotal;
-    if (body.cashOut    !== undefined) finances.cashOut    = body.cashOut;
-    
-    // Enforce max rebuys if set
+    if (body.cashOut !== undefined) finances.cashOut = body.cashOut;
+
     if (finances.rebuyTotal !== undefined && finances.rebuyTotal > 0) {
       const limitsResult = await pool.query(
         `SELECT gs.max_rebuys, gs.buy_in_amount
@@ -384,7 +428,7 @@ router.patch(
       );
       const maxRebuys: number = limitsResult.rows[0]?.max_rebuys ?? 0;
       const buyInAmount: number = limitsResult.rows[0]?.buy_in_amount ?? 0;
-    
+
       if (maxRebuys > 0 && buyInAmount > 0) {
         const impliedCount = Math.round(finances.rebuyTotal / buyInAmount);
         if (impliedCount > maxRebuys) {
@@ -415,6 +459,79 @@ router.patch(
       message: 'Player finances updated',
       sessionCode,
       displayName,
+    });
+  })
+);
+
+// ---------------------------------------------------------------------------
+// DELETE /api/sessions/:sessionCode/players/:displayName  (HOST ONLY)
+// ---------------------------------------------------------------------------
+router.delete(
+  '/:sessionCode/players/:displayName',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { sessionCode, displayName } = req.params as {
+      sessionCode: string;
+      displayName: string;
+    };
+
+    const requestedName = decodeURIComponent(displayName).trim().toLowerCase();
+
+    console.log('REMOVE PLAYER request:', {
+      sessionCode,
+      requestedName,
+      requesterUserId: req.session.userId,
+    });
+
+    const session = await getSessionWithPlayers(sessionCode);
+
+    if (!session) {
+      console.log('REMOVE PLAYER failed: session not found');
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    if (session.hostUserId !== req.session.userId) {
+      console.log('REMOVE PLAYER failed: not host');
+      return res.status(403).json({ error: 'Only the host can remove players' });
+    }
+
+    const matchedPlayer = session.players.find(
+      (p) => (p.displayName ?? '').trim().toLowerCase() === requestedName
+    );
+
+    if (!matchedPlayer) {
+      console.log('REMOVE PLAYER failed: no match in session players', {
+        requestedName,
+        sessionPlayers: session.players.map((p) => p.displayName),
+      });
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    const exactName = matchedPlayer.displayName;
+
+    console.log('MATCHED PLAYER:', exactName);
+
+    const result = await pool.query(
+      'DELETE FROM session_players WHERE session_code = $1 AND display_name = $2',
+      [sessionCode, exactName]
+    );
+
+    if (result.rowCount === 0) {
+      console.log('REMOVE PLAYER failed: delete query found no row');
+      return res.status(404).json({ error: 'Player not found in DB' });
+    }
+
+    const io: Server = req.app.get('io');
+    io.to(sessionCode).emit('player:removed', {
+      sessionCode,
+      removedDisplayName: exactName,
+    });
+
+    console.log('REMOVE PLAYER success:', exactName);
+
+    return res.status(200).json({
+      message: 'Player removed',
+      displayName: exactName,
     });
   })
 );
@@ -600,19 +717,6 @@ router.post(
     );
     const inviterUsername: string = inviterResult.rows[0]?.username ?? 'Unknown';
     io.to(`user:${inviteeId}`).emit('user:invite', { ...invite, inviterUsername });
-
-    if (isNew) {
-      const tokenResult = await pool.query<{ push_token: string | null }>(
-        'SELECT push_token FROM users WHERE user_id = $1',
-        [inviteeId]
-      );
-      void sendPushNotification(
-        tokenResult.rows[0]?.push_token ?? null,
-        'Session Invite',
-        `${inviterUsername} invited you to a game!`,
-        { type: 'session_invite' }
-      );
-    }
 
     return res.status(isNew ? 201 : 200).json({ ...invite, inviterUsername });
   })

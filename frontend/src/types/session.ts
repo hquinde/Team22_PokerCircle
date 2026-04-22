@@ -26,5 +26,6 @@ export interface Session {
   privacy: 'public' | 'private';
   buyInAmount: number;
   maxRebuys: number;
+  privacy: 'public' | 'private'; // ✅ ADDED THIS LINE
   players: Player[];
 }

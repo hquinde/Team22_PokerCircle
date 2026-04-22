@@ -48,6 +48,16 @@ export async function getSession(sessionCode: string): Promise<Session> {
 }
 
 export async function createSession(
+  buyInAmount: number,
+  maxRebuys: number,
+  privacy: 'public' | 'private' = 'private'
+) {
+  const response = await fetch(`${BACKEND_URL}/api/sessions`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
   buyInAmount = 0,
   maxRebuys = 0,
   privacy: 'public' | 'private' = 'private'
@@ -58,11 +68,13 @@ export async function createSession(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ buyInAmount, maxRebuys, privacy }),
   });
+
   if (!response.ok) {
-    const body = await response.json().catch(() => ({})) as { error?: string };
-    throw new Error(body.error ?? 'Failed to create session');
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.error ?? 'Could not create session');
   }
-  return response.json() as Promise<Session>;
+
+  return response.json();
 }
 
 export async function getPublicSessions(): Promise<PublicSessionInfo[]> {

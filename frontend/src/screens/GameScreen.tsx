@@ -140,6 +140,7 @@ export default function GameScreen({ route, navigation }: Props) {
   const [buyInAmount, setBuyInAmount] = useState(0);
   const [maxRebuys, setMaxRebuys] = useState(0);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   const [buyIn, setBuyIn] = useState('');
   const [rebuy, setRebuy] = useState('');
@@ -163,13 +164,21 @@ export default function GameScreen({ route, navigation }: Props) {
     let active = true;
 
     const handleConnect = () => {
-      if (myPlayerNameRef.current) {
-        socket.emit('session:joinRoom', {
-          sessionCode: sessionCodeRef.current,
-          playerName: myPlayerNameRef.current,
-        });
-      }
-    };
+  setIsReconnecting(false);
+
+  if (myPlayerNameRef.current) {
+    socket.emit('session:joinRoom', {
+      sessionCode: sessionCodeRef.current,
+      playerName: myPlayerNameRef.current,
+    });
+  }
+};
+
+
+    const handleDisconnect = () => {
+  if (!active) return;
+  setIsReconnecting(true);
+  };
 
     const handleFinanceUpdate = (payload: { sessionCode: string; players: Player[] }) => {
       if (!active || payload.sessionCode !== sessionCodeRef.current) return;
@@ -180,6 +189,7 @@ export default function GameScreen({ route, navigation }: Props) {
       if (!active) return;
       navigation.replace('Results', { sessionCode: payload.sessionCode });
     };
+    
 
     const handlePlayerRemoved = (payload: {
       sessionCode: string;
@@ -205,6 +215,7 @@ export default function GameScreen({ route, navigation }: Props) {
     };
 
     socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
     socket.on('finance:update', handleFinanceUpdate);
     socket.on('game:complete', handleComplete);
     socket.on('player:removed', handlePlayerRemoved);
@@ -259,12 +270,14 @@ export default function GameScreen({ route, navigation }: Props) {
     void init();
 
     return () => {
-      active = false;
-      socket.off('connect', handleConnect);
-      socket.off('finance:update', handleFinanceUpdate);
-      socket.off('game:complete', handleComplete);
-      socket.off('player:removed', handlePlayerRemoved);
-    };
+  active = false;
+  socket.off('connect', handleConnect);
+  socket.off('disconnect', handleDisconnect);
+  socket.off('finance:update', handleFinanceUpdate);
+  socket.off('game:complete', handleComplete);
+  socket.off('player:removed', handlePlayerRemoved);
+};
+
   }, [sessionCode, navigation]);
 
   async function handleRemovePlayer(displayName: string) {
@@ -396,8 +409,14 @@ export default function GameScreen({ route, navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
+  <SafeAreaView style={styles.container}>
+    {isReconnecting && (
+      <View style={styles.reconnectBanner}>
+        <Text style={styles.reconnectText}>Reconnecting...</Text>
+      </View>
+    )}
+
+    <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
@@ -1041,4 +1060,14 @@ const styles = StyleSheet.create({
     opacity: 0.85,
     transform: [{ scale: 0.97 }],
   },
+  reconnectBanner: {
+  backgroundColor: '#ffcc00',
+  paddingVertical: 6,
+  alignItems: 'center',
+},
+
+reconnectText: {
+  color: '#000',
+  fontWeight: '600',
+},
 });

@@ -27,7 +27,7 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 import { BACKEND_URL } from './src/config/api';
 import { loadAuth } from './src/services/authStorage';
 import { colors } from './src/theme/colors';
-import { ThemeProvider } from './src/theme/ThemeContext';
+import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 
 export type TabParamList = {
   Home: undefined;
@@ -62,14 +62,15 @@ const Tab = createBottomTabNavigator<TabParamList>();
 
 /* ---------------- TAB NAVIGATOR ---------------- */
 function MainTabs() {
+  const { theme } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={({ route }: { route: { name: keyof TabParamList } }) => ({
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: 'gray',
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.placeholder,
         tabBarStyle: {
-          backgroundColor: colors.background,
+          backgroundColor: theme.background,
           borderTopWidth: 0,
         },
         tabBarIcon: ({ color, size }: { color: string; size: number }) => {
@@ -99,8 +100,51 @@ function MainTabs() {
   );
 }
 
-/* ---------------- AUTH STATE ---------------- */
+/* ---------------- AUTH STATE & APP CONTENT ---------------- */
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
+function AppContent({ authStatus, navigationRef }: { authStatus: AuthStatus; navigationRef: any }) {
+  const { theme, colorScheme } = useTheme();
+
+  return (
+    <ErrorBoundary>
+      <NavigationContainer ref={navigationRef}>
+        <StatusBar barStyle={colorScheme === 'dark' ? 'light' : 'dark'} backgroundColor={theme.background} />
+        <Stack.Navigator
+          initialRouteName={authStatus === 'authenticated' ? 'MainTabs' : 'Welcome'}
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: theme.background,
+              elevation: 0,
+              shadowOpacity: 0,
+              borderBottomWidth: 0,
+            },
+            headerTintColor: theme.primary,
+            headerTitle: '',
+          }}
+        >
+          {/* AUTH */}
+          <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
+
+          {/* MAIN APP (WITH TABS) */}
+          <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+
+          {/* SESSION SCREENS (NO TAB BAR) */}
+          <Stack.Screen name="JoinSession" component={JoinSessionScreen} />
+          <Stack.Screen name="Lobby" component={LobbyScreen} />
+          <Stack.Screen name="InviteFriends" component={InviteFriendsScreen} />
+          <Stack.Screen name="Game" component={GameScreen} />
+          <Stack.Screen name="Results" component={ResultsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </ErrorBoundary>
+  );
+}
 
 export default function App() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
@@ -182,42 +226,7 @@ export default function App() {
 
   return (
     <ThemeProvider>
-      <ErrorBoundary>
-        <NavigationContainer ref={navigationRef}>
-        <StatusBar style="auto" />
-        <Stack.Navigator
-          initialRouteName={authStatus === 'authenticated' ? 'MainTabs' : 'Welcome'}
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: colors.background,
-              elevation: 0,
-              shadowOpacity: 0,
-              borderBottomWidth: 0,
-            },
-            headerTintColor: colors.primary,
-            headerTitle: '',
-          }}
-        >
-          {/* AUTH */}
-          <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
-
-          {/* MAIN APP (WITH TABS) */}
-          <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-
-          {/* SESSION SCREENS (NO TAB BAR) */}
-          <Stack.Screen name="JoinSession" component={JoinSessionScreen} />
-          <Stack.Screen name="Lobby" component={LobbyScreen} />
-          <Stack.Screen name="InviteFriends" component={InviteFriendsScreen} />
-          <Stack.Screen name="Game" component={GameScreen} />
-          <Stack.Screen name="Results" component={ResultsScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
-        </Stack.Navigator>
-      </NavigationContainer>
-      </ErrorBoundary>
+      <AppContent authStatus={authStatus} navigationRef={navigationRef} />
     </ThemeProvider>
   );
 }

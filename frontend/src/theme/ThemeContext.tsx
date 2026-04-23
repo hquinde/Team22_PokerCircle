@@ -20,7 +20,6 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const systemColorScheme = useColorScheme();
   const [colorSchemeOverride, setColorSchemeOverrideState] = useState<ColorSchemeOverride>('system');
   const [isLoaded, setIsLoaded] = useState(false);
-  const [, forceUpdate] = useState({});
 
   useEffect(() => {
     const loadThemePreference = async () => {
@@ -36,13 +35,6 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     loadThemePreference();
-
-    // Listen for system appearance changes
-    const subscription = Appearance.addChangeListener(() => {
-      forceUpdate({});
-    });
-
-    return () => subscription.remove();
   }, []);
 
   const determineColorScheme = (): 'light' | 'dark' => {

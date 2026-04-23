@@ -46,5 +46,7 @@ export const darkTheme: ThemeColors = {
   placeholder: '#888888',
 };
 
-// Legacy export for backwards compatibility during migration
+// Default colors - screens that don't use useTheme hook will use this
+// NOTE: This is for backwards compatibility only. New code should use useTheme()
 export const colors = lightTheme;
+

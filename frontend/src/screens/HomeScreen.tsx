@@ -16,7 +16,6 @@ import type { StackScreenProps } from '@react-navigation/stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { RootStackParamList, TabParamList } from '../../App';
-import { colors } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import {
   createSession,
@@ -41,6 +40,263 @@ type Props = CompositeScreenProps<
 
 function getThemeStyles(theme: any) {
   return {
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    listContent: {
+      flexGrow: 1,
+      paddingHorizontal: 24,
+      paddingBottom: 32,
+      justifyContent: 'center',
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 32,
+    },
+    modalCard: {
+      width: '100%',
+      backgroundColor: theme.inputBackground,
+      borderRadius: 16,
+      padding: 24,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '700' as const,
+      color: theme.text,
+      marginBottom: 20,
+      textAlign: 'center' as const,
+    },
+    modalLabel: {
+      fontSize: 13,
+      color: theme.placeholder,
+      marginBottom: 6,
+    },
+    modalInput: {
+      backgroundColor: theme.background,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+      borderRadius: 8,
+      padding: 12,
+      color: theme.text,
+      fontSize: 16,
+      marginBottom: 16,
+    },
+    privacyRow: {
+      flexDirection: 'row' as const,
+      marginBottom: 16,
+    },
+    privacyOption: {
+      flex: 1,
+      backgroundColor: theme.background,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+      borderRadius: 8,
+      paddingVertical: 12,
+      alignItems: 'center' as const,
+      marginRight: 10,
+    },
+    privacyOptionActive: {
+      backgroundColor: theme.primary,
+      borderColor: theme.primary,
+    },
+    privacyOptionText: {
+      color: theme.text,
+      fontSize: 14,
+      fontWeight: '600' as const,
+    },
+    privacyOptionTextActive: {
+      color: theme.textOnPrimary,
+    },
+    toggleRow: {
+      flexDirection: 'row' as const,
+      backgroundColor: theme.background,
+      borderRadius: 8,
+      padding: 4,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+    },
+    toggleBtn: {
+      flex: 1,
+      paddingVertical: 10,
+      alignItems: 'center' as const,
+      borderRadius: 6,
+    },
+    toggleBtnActive: {
+      backgroundColor: theme.primary,
+    },
+    toggleBtnText: {
+      fontSize: 14,
+      fontWeight: '600' as const,
+      color: theme.placeholder,
+    },
+    toggleBtnTextActive: {
+      color: theme.textOnPrimary,
+    },
+    header: {
+      alignItems: 'center' as const,
+      paddingBottom: 8,
+      width: '100%',
+    },
+    profileRow: {
+      width: '100%',
+      maxWidth: 320,
+      marginBottom: 20,
+    },
+    userSection: {
+      alignItems: 'flex-start' as const,
+    },
+    title: {
+      fontSize: 42,
+      letterSpacing: 3,
+      color: theme.primaryDark,
+      textTransform: 'uppercase' as const,
+    },
+    usernameText: {
+      color: theme.placeholder,
+      fontSize: 13,
+      marginTop: 4,
+      marginBottom: 12,
+      letterSpacing: 0.5,
+    },
+    logoutButton: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.disabled,
+    },
+    logoutButtonPressed: {
+      opacity: 0.6,
+    },
+    logoutText: {
+      color: theme.placeholder,
+      fontSize: 13,
+      fontWeight: '600' as const,
+    },
+    rejoinBannerPressed: {
+      opacity: 0.8,
+    },
+    rejoinBannerLeft: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: 12,
+    },
+    inviteSection: {
+      width: '100%',
+      maxWidth: 320,
+      marginBottom: 8,
+    },
+    inviteSectionTitle: {
+      color: theme.text,
+      fontSize: 12,
+      fontWeight: '700' as const,
+      letterSpacing: 1.5,
+      textTransform: 'uppercase' as const,
+      marginBottom: 8,
+    },
+    inviteRow: {
+      alignSelf: 'center' as const,
+      width: '100%',
+      maxWidth: 320,
+      backgroundColor: theme.inputBackground,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+      padding: 12,
+      marginBottom: 8,
+    },
+    inviteFrom: {
+      color: theme.text,
+      fontSize: 13,
+      marginBottom: 4,
+    },
+    inviteCode: {
+      color: theme.primary,
+      fontSize: 22,
+      fontWeight: '700' as const,
+      letterSpacing: 4,
+      marginBottom: 10,
+    },
+    inviteActions: {
+      flexDirection: 'row' as const,
+      gap: 8,
+    },
+    acceptButton: {
+      flex: 1,
+      backgroundColor: theme.primary,
+      borderRadius: 6,
+      paddingVertical: 10,
+      alignItems: 'center' as const,
+    },
+    declineButton: {
+      flex: 1,
+      borderRadius: 6,
+      paddingVertical: 10,
+      alignItems: 'center' as const,
+      borderWidth: 1,
+      borderColor: theme.disabled,
+    },
+    acceptButtonText: {
+      color: theme.textOnPrimary,
+      fontSize: 13,
+      fontWeight: '600' as const,
+    },
+    declineButtonText: {
+      color: theme.placeholder,
+      fontSize: 13,
+    },
+    actionDisabled: {
+      opacity: 0.5,
+    },
+    buttonContainer: {
+      width: '100%',
+      maxWidth: 320,
+      alignSelf: 'center' as const,
+      paddingTop: 16,
+    },
+    primaryButton: {
+      backgroundColor: theme.primary,
+      paddingVertical: 18,
+      borderRadius: 30,
+      alignItems: 'center' as const,
+      marginBottom: 14,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 5 },
+      shadowOpacity: 0.4,
+      shadowRadius: 10,
+      elevation: 8,
+    },
+    primaryButtonText: {
+      color: theme.textOnPrimary,
+      fontSize: 18,
+      fontWeight: '600' as const,
+      letterSpacing: 1,
+    },
+    secondaryButton: {
+      paddingVertical: 16,
+      borderRadius: 30,
+      alignItems: 'center' as const,
+      borderWidth: 1.5,
+      borderColor: theme.primary,
+      marginBottom: 14,
+    },
+    secondaryButtonText: {
+      color: theme.text,
+      fontSize: 16,
+      fontWeight: '600' as const,
+      letterSpacing: 1,
+    },
+    buttonPressed: {
+      opacity: 0.85,
+      transform: [{ scale: 0.97 }],
+    },
     rejoinBanner: {
       width: '100%' as const,
       maxWidth: 320,
@@ -85,7 +341,7 @@ function getThemeStyles(theme: any) {
 
 export default function HomeScreen({ navigation }: Props) {
   const { theme, colorScheme } = useTheme();
-  const themeStyles = getThemeStyles(theme);
+  const styles = getThemeStyles(theme);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [invites, setInvites] = useState<SessionInvite[]>([]);
@@ -351,7 +607,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   if (screenError) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={styles.container}>
         <ErrorMessage message={screenError} onRetry={() => loadHomeData()} />
       </View>
     );
@@ -374,7 +630,7 @@ export default function HomeScreen({ navigation }: Props) {
             disabled={loggingOut}
           >
             {loggingOut ? (
-              <ActivityIndicator color={colors.placeholder} size="small" />
+              <ActivityIndicator color={theme.placeholder} size="small" />
             ) : (
               <Text style={styles.logoutText}>Log Out</Text>
             )}
@@ -386,19 +642,19 @@ export default function HomeScreen({ navigation }: Props) {
       {activeSession?.sessionCode != null && (
         <Pressable
           style={({ pressed }) => [
-            themeStyles.rejoinBanner,
+            styles.rejoinBanner,
             pressed && styles.rejoinBannerPressed,
           ]}
           onPress={handleRejoinSession}
         >
           <View style={styles.rejoinBannerLeft}>
-            <View style={themeStyles.rejoinPulseDot} />
+            <View style={styles.rejoinPulseDot} />
             <View>
-              <Text style={themeStyles.rejoinBannerLabel}>SESSION IN PROGRESS</Text>
-              <Text style={themeStyles.rejoinBannerCode}>{activeSession.sessionCode}</Text>
+              <Text style={styles.rejoinBannerLabel}>SESSION IN PROGRESS</Text>
+              <Text style={styles.rejoinBannerCode}>{activeSession.sessionCode}</Text>
             </View>
           </View>
-          <Text style={themeStyles.rejoinBannerCta}>Rejoin →</Text>
+          <Text style={styles.rejoinBannerCta}>Rejoin →</Text>
         </Pressable>
       )}
 
@@ -417,7 +673,7 @@ export default function HomeScreen({ navigation }: Props) {
                     disabled={isResponding}
                   >
                     {isResponding ? (
-                      <ActivityIndicator color={colors.textOnPrimary} size="small" />
+                      <ActivityIndicator color={theme.textOnPrimary} size="small" />
                     ) : (
                       <Text style={styles.acceptButtonText}>Accept</Text>
                     )}
@@ -460,7 +716,7 @@ export default function HomeScreen({ navigation }: Props) {
         disabled={creating}
       >
         {creating ? (
-          <ActivityIndicator color={colors.textOnPrimary} />
+          <ActivityIndicator color={theme.textOnPrimary} />
         ) : (
           <Text style={styles.primaryButtonText}>Create Session</Text>
         )}
@@ -507,7 +763,7 @@ export default function HomeScreen({ navigation }: Props) {
     <View style={{ flex: 1 }}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <FlatList
-        style={[styles.container, { backgroundColor: theme.background }]}
+        style={styles.container}
         contentContainerStyle={styles.listContent}
         data={invites}
         keyExtractor={(item) => item.id.toString()}
@@ -526,7 +782,7 @@ export default function HomeScreen({ navigation }: Props) {
                   disabled={isResponding}
                 >
                   {isResponding ? (
-                    <ActivityIndicator color={colors.textOnPrimary} size="small" />
+                    <ActivityIndicator color={theme.textOnPrimary} size="small" />
                   ) : (
                     <Text style={styles.acceptButtonText}>Accept</Text>
                   )}
@@ -565,7 +821,7 @@ export default function HomeScreen({ navigation }: Props) {
                 onChangeText={setNewBuyIn}
                 keyboardType="numeric"
                 placeholder="0 = no limit"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor={theme.placeholder}
               />
 
               <Text style={styles.modalLabel}>Max Rebuys</Text>
@@ -575,7 +831,7 @@ export default function HomeScreen({ navigation }: Props) {
   onChangeText={setNewMaxRebuys}
   keyboardType="numeric"
   placeholder="0 = unlimited"
-  placeholderTextColor={colors.placeholder}
+  placeholderTextColor={theme.placeholder}
 />
 
 <Text style={styles.modalLabel}>Session Privacy</Text>
@@ -623,67 +879,11 @@ export default function HomeScreen({ navigation }: Props) {
   disabled={creating}
 >
   {creating ? (
-    <ActivityIndicator color={colors.textOnPrimary} />
+    <ActivityIndicator color={theme.textOnPrimary} />
   ) : (
     <Text style={styles.primaryButtonText}>Create</Text>
   )}
 </Pressable>
-              <TextInput
-                style={styles.modalInput}
-                value={newMaxRebuys}
-                onChangeText={setNewMaxRebuys}
-                keyboardType="numeric"
-                placeholder="0 = unlimited"
-                placeholderTextColor={colors.placeholder}
-              />
-
-              <Text style={styles.modalLabel}>Visibility</Text>
-              <View style={styles.toggleRow}>
-                <Pressable
-                  style={[
-                    styles.toggleBtn,
-                    newPrivacy === 'private' && styles.toggleBtnActive,
-                  ]}
-                  onPress={() => setNewPrivacy('private')}
-                >
-                  <Text
-                    style={[
-                      styles.toggleBtnText,
-                      newPrivacy === 'private' && styles.toggleBtnTextActive,
-                    ]}
-                  >
-                    Private
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.toggleBtn,
-                    newPrivacy === 'public' && styles.toggleBtnActive,
-                  ]}
-                  onPress={() => setNewPrivacy('public')}
-                >
-                  <Text
-                    style={[
-                      styles.toggleBtnText,
-                      newPrivacy === 'public' && styles.toggleBtnTextActive,
-                    ]}
-                  >
-                    Public
-                  </Text>
-                </Pressable>
-              </View>
-
-              <Pressable
-                style={[styles.primaryButton, { marginBottom: 10 }]}
-                onPress={handleCreateSession}
-                disabled={creating}
-              >
-                {creating ? (
-                  <ActivityIndicator color={colors.textOnPrimary} />
-                ) : (
-                  <Text style={styles.primaryButtonText}>Create</Text>
-                )}
-              </Pressable>
 
               <Pressable
                 style={styles.secondaryButton}
@@ -699,275 +899,3 @@ export default function HomeScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  listContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    justifyContent: 'center',
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-  modalCard: {
-    width: '100%',
-    backgroundColor: colors.inputBackground,
-    borderRadius: 16,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  modalLabel: {
-    fontSize: 13,
-    color: colors.placeholder,
-    marginBottom: 6,
-  },
-  modalInput: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-    borderRadius: 8,
-    padding: 12,
-    color: colors.text,
-    fontSize: 16,
-    marginBottom: 16,
-  },
-
-  privacyRow: {
-  flexDirection: 'row',
-  marginBottom: 16,
-},
-
-privacyOption: {
-  flex: 1,
-  backgroundColor: colors.background,
-  borderWidth: 1,
-  borderColor: colors.inputBorder,
-  borderRadius: 8,
-  paddingVertical: 12,
-  alignItems: 'center',
-  marginRight: 10,
-},
-
-privacyOptionActive: {
-  backgroundColor: colors.primary,
-  borderColor: colors.primary,
-},
-
-privacyOptionText: {
-  color: colors.text,
-  fontSize: 14,
-  fontWeight: '600',
-},
-
-privacyOptionTextActive: {
-  color: colors.textOnPrimary,
-},
-  toggleRow: {
-    flexDirection: 'row',
-    backgroundColor: colors.background,
-    borderRadius: 8,
-    padding: 4,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-  },
-  toggleBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 6,
-  },
-  toggleBtnActive: {
-    backgroundColor: colors.primary,
-  },
-  toggleBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.placeholder,
-  },
-  toggleBtnTextActive: {
-    color: colors.textOnPrimary,
-  },
-
-  header: {
-    alignItems: 'center',
-    paddingBottom: 8,
-    width: '100%',
-  },
-  profileRow: {
-    width: '100%',
-    maxWidth: 320,
-    marginBottom: 20,
-  },
-  userSection: {
-    alignItems: 'flex-start',
-  },
-  title: {
-    fontSize: 42,
-    letterSpacing: 3,
-    color: colors.primaryDark,
-    textTransform: 'uppercase',
-  },
-  usernameText: {
-    color: colors.placeholder,
-    fontSize: 13,
-    marginTop: 4,
-    marginBottom: 12,
-    letterSpacing: 0.5,
-  },
-  logoutButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.disabled,
-  },
-  logoutButtonPressed: {
-    opacity: 0.6,
-  },
-  logoutText: {
-    color: colors.placeholder,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-
-  // ── TM22-146: Rejoin banner ─────────────────────────────────────────────
-  rejoinBannerPressed: {
-    opacity: 0.8,
-  },
-  rejoinBannerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-
-  inviteSection: {
-    width: '100%',
-    maxWidth: 320,
-    marginBottom: 8,
-  },
-  inviteSectionTitle: {
-    color: colors.text,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
-
-  inviteRow: {
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: 320,
-    backgroundColor: colors.inputBackground,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-    padding: 12,
-    marginBottom: 8,
-  },
-  inviteFrom: {
-    color: colors.text,
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  inviteCode: {
-    color: colors.primary,
-    fontSize: 22,
-    fontWeight: '700',
-    letterSpacing: 4,
-    marginBottom: 10,
-  },
-  inviteActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  acceptButton: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    borderRadius: 6,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  declineButton: {
-    flex: 1,
-    borderRadius: 6,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.disabled,
-  },
-  acceptButtonText: {
-    color: colors.textOnPrimary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  declineButtonText: {
-    color: colors.placeholder,
-    fontSize: 13,
-  },
-  actionDisabled: {
-    opacity: 0.5,
-  },
-
-  buttonContainer: {
-    width: '100%',
-    maxWidth: 320,
-    alignSelf: 'center',
-    paddingTop: 16,
-  },
-  primaryButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 18,
-    borderRadius: 30,
-    alignItems: 'center',
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  primaryButtonText: {
-    color: colors.textOnPrimary,
-    fontSize: 18,
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  secondaryButton: {
-    paddingVertical: 16,
-    borderRadius: 30,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    marginBottom: 14,
-  },
-  secondaryButtonText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  buttonPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.97 }],
-  },
-
-});

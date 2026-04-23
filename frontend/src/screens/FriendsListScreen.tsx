@@ -16,6 +16,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { RootStackParamList, TabParamList } from '../../App';
 import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import {
   getFriends,
   getPendingFriendRequests,
@@ -32,6 +33,7 @@ type Props = CompositeScreenProps<
 >;
 
 export default function FriendsListScreen({ navigation: _navigation }: Props) {
+  const { theme, colorScheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
@@ -139,22 +141,22 @@ export default function FriendsListScreen({ navigation: _navigation }: Props) {
       case 'none':
         return (
           <Pressable
-            style={({ pressed }) => [styles.actionButton, pressed && styles.buttonPressed]}
+            style={({ pressed }) => [{ ...styles.actionButton, backgroundColor: theme.primary }, pressed && styles.buttonPressed]}
             onPress={() => handleSendRequest(item.userId)}
           >
-            <Text style={styles.actionButtonText}>Send Request</Text>
+            <Text style={[styles.actionButtonText, { color: theme.textOnPrimary }]}>Send Request</Text>
           </Pressable>
         );
       case 'pending_sent':
         return (
-          <Pressable style={[styles.actionButton, styles.actionButtonDisabled]} disabled>
-            <Text style={styles.actionButtonText}>Request Sent</Text>
+          <Pressable style={[{ ...styles.actionButton, backgroundColor: theme.primary }, styles.actionButtonDisabled]} disabled>
+            <Text style={[styles.actionButtonText, { color: theme.textOnPrimary }]}>Request Sent</Text>
           </Pressable>
         );
       case 'accepted':
         return (
-          <Pressable style={[styles.actionButton, styles.actionButtonDisabled]} disabled>
-            <Text style={styles.actionButtonText}>Already Friends</Text>
+          <Pressable style={[{ ...styles.actionButton, backgroundColor: theme.primary }, styles.actionButtonDisabled]} disabled>
+            <Text style={[styles.actionButtonText, { color: theme.textOnPrimary }]}>Already Friends</Text>
           </Pressable>
         );
       default:
@@ -165,10 +167,10 @@ export default function FriendsListScreen({ navigation: _navigation }: Props) {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#0D0D0D" />
+        <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
         <View style={styles.centered}>
-          <ActivityIndicator color={colors.primary} size="large" />
-          <Text style={styles.loadingText}>Loading friends...</Text>
+          <ActivityIndicator color={theme.primary} size="large" />
+          <Text style={[styles.loadingText, { color: theme.placeholder }]}>Loading friends...</Text>
         </View>
       </SafeAreaView>
     );
@@ -177,50 +179,50 @@ export default function FriendsListScreen({ navigation: _navigation }: Props) {
   if (error) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#0D0D0D" />
+        <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
         <View style={styles.centered}>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={[styles.errorText, { color: theme.primary }]}>{error}</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D0D0D" />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Friends</Text>
+        <Text style={[styles.title, { color: theme.primary }]}>Friends</Text>
 
         {/* Search section */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Add Friend</Text>
+          <Text style={[styles.sectionHeader, { color: theme.placeholder }]}>Add Friend</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder, color: theme.text }]}
             value={query}
             onChangeText={(text) => setQuery(text.replace(/\s{2,}/g, ' '))}
             autoCapitalize="none"
             autoCorrect={false}
             placeholder="Search by username"
-            placeholderTextColor={colors.placeholder}
+            placeholderTextColor={theme.placeholder}
             returnKeyType="search"
             onSubmitEditing={handleSearch}
           />
           <Pressable
             style={({ pressed }) => [
-              styles.searchButton,
+              { ...styles.searchButton, backgroundColor: theme.primary },
               (!canSearch || searchLoading) && styles.searchButtonDisabled,
               pressed && canSearch && !searchLoading && styles.buttonPressed,
             ]}
             onPress={handleSearch}
             disabled={!canSearch || searchLoading}
           >
-            <Text style={styles.searchButtonText}>
+            <Text style={[styles.searchButtonText, { color: theme.textOnPrimary }]}>
               {searchLoading ? 'Searching...' : 'Search'}
             </Text>
           </Pressable>
 
           {!searchLoading && hasSearched && searchResults.length === 0 && (
-            <Text style={styles.emptyText}>No users found.</Text>
+            <Text style={[styles.emptyText, { color: theme.placeholder }]}>No users found.</Text>
           )}
 
           {searchResults.length > 0 && (
@@ -229,8 +231,8 @@ export default function FriendsListScreen({ navigation: _navigation }: Props) {
               keyExtractor={(item) => item.userId}
               scrollEnabled={false}
               renderItem={({ item }) => (
-                <View style={styles.row}>
-                  <Text style={styles.username}>{item.username}</Text>
+                <View style={[styles.row, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}>
+                  <Text style={[styles.username, { color: theme.text }]}>{item.username}</Text>
                   {renderSearchActionButton(item)}
                 </View>
               )}
@@ -241,22 +243,22 @@ export default function FriendsListScreen({ navigation: _navigation }: Props) {
         {/* Pending requests section */}
         {pendingRequests.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionHeader}>Friend Requests</Text>
+            <Text style={[styles.sectionHeader, { color: theme.placeholder }]}>Friend Requests</Text>
             {pendingRequests.map((req) => (
-              <View key={req.id} style={styles.row}>
-                <Text style={styles.username}>{req.requesterUsername}</Text>
+              <View key={req.id} style={[styles.row, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}>
+                <Text style={[styles.username, { color: theme.text }]}>{req.requesterUsername}</Text>
                 <View style={styles.rowActions}>
                   <Pressable
-                    style={({ pressed }) => [styles.acceptButton, pressed && styles.buttonPressed]}
+                    style={({ pressed }) => [{ ...styles.acceptButton, backgroundColor: theme.primary }, pressed && styles.buttonPressed]}
                     onPress={() => handleAccept(req)}
                   >
-                    <Text style={styles.actionButtonText}>Accept</Text>
+                    <Text style={[styles.actionButtonText, { color: theme.textOnPrimary }]}>Accept</Text>
                   </Pressable>
                   <Pressable
-                    style={({ pressed }) => [styles.declineButton, pressed && styles.buttonPressed]}
+                    style={({ pressed }) => [{ ...styles.declineButton, backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }, pressed && styles.buttonPressed]}
                     onPress={() => handleDecline(req.id)}
                   >
-                    <Text style={styles.actionButtonText}>Decline</Text>
+                    <Text style={[styles.actionButtonText, { color: theme.text }]}>Decline</Text>
                   </Pressable>
                 </View>
               </View>
@@ -267,10 +269,10 @@ export default function FriendsListScreen({ navigation: _navigation }: Props) {
         {/* Accepted friends section */}
         <View style={styles.section}>
           {(pendingRequests.length > 0 || hasSearched) && (
-            <Text style={styles.sectionHeader}>My Friends</Text>
+            <Text style={[styles.sectionHeader, { color: theme.placeholder }]}>My Friends</Text>
           )}
           {friends.length === 0 ? (
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, { color: theme.placeholder }]}>
               No friends yet — search for someone to play with!
             </Text>
           ) : (
@@ -279,8 +281,8 @@ export default function FriendsListScreen({ navigation: _navigation }: Props) {
               keyExtractor={(item) => String(item.userId)}
               scrollEnabled={false}
               renderItem={({ item }) => (
-                <View style={styles.row}>
-                  <Text style={styles.username}>{item.username}</Text>
+                <View style={[styles.row, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}>
+                  <Text style={[styles.username, { color: theme.text }]}>{item.username}</Text>
                 </View>
               )}
             />
@@ -294,7 +296,6 @@ export default function FriendsListScreen({ navigation: _navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scroll: {
     flex: 1,
@@ -313,7 +314,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: colors.primary,
     marginBottom: 20,
     letterSpacing: 1,
   },
@@ -323,24 +323,19 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.placeholder,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 10,
   },
   input: {
-    backgroundColor: colors.inputBackground,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    color: colors.text,
     fontSize: 15,
     marginBottom: 10,
+    borderWidth: 1,
   },
   searchButton: {
-    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: 'center',
@@ -350,15 +345,12 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   searchButtonText: {
-    color: '#000',
     fontWeight: '700',
     fontSize: 15,
   },
   row: {
-    backgroundColor: colors.inputBackground,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 8,
@@ -371,12 +363,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   username: {
-    color: colors.text,
     fontSize: 15,
     flex: 1,
   },
   actionButton: {
-    backgroundColor: colors.primary,
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -385,38 +375,31 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   actionButtonText: {
-    color: '#000',
     fontWeight: '700',
     fontSize: 13,
   },
   acceptButton: {
-    backgroundColor: colors.primary,
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   declineButton: {
-    backgroundColor: colors.inputBackground,
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
   },
   buttonPressed: {
     opacity: 0.7,
   },
   emptyText: {
-    color: colors.placeholder,
     fontSize: 15,
   },
   loadingText: {
-    color: colors.placeholder,
     fontSize: 15,
     marginTop: 12,
   },
   errorText: {
-    color: colors.primary,
     fontSize: 15,
     textAlign: 'center',
   },

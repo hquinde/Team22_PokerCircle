@@ -13,10 +13,12 @@ import {
   TextInput,
   FlatList,
   StyleSheet,
+  StatusBar,
 } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { completeSession, getSession, updatePlayerFinances, updateSessionSettings } from '../api/api';
 import { socket } from '../services/socket';
 import { BACKEND_URL } from '../config/api';
@@ -132,6 +134,7 @@ function PlayerCard({ player, isMe, sessionBuyIn, canRemove, onRemove }: PlayerC
 
 export default function GameScreen({ route, navigation }: Props) {
   const { sessionCode } = route.params;
+  const { theme, colorScheme } = useTheme();
 
   const [players, setPlayers] = useState<Player[]>([]);
 const [isHost, setIsHost] = useState(false);
@@ -456,9 +459,10 @@ const [isSavingSettings, setIsSavingSettings] = useState(false);
   }
 
   return (
-  <SafeAreaView style={styles.container}>
+  <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
     {isReconnecting && (
-      <View style={styles.reconnectBanner}>
+      <View style={[styles.reconnectBanner, { backgroundColor: theme.accent }]}>
         <Text style={styles.reconnectText}>Reconnecting...</Text>
       </View>
     )}
@@ -498,7 +502,7 @@ const [isSavingSettings, setIsSavingSettings] = useState(false);
             )}
             {isHost && (
   <Pressable
-    style={styles.secondaryButton}
+    style={[styles.secondaryButton, { backgroundColor: theme.surface, borderColor: theme.primary }]}
     onPress={() => {
       setEditBuyIn(String(buyInAmount ?? 0));
       setEditMaxRebuys(String(maxRebuys ?? 0));
@@ -507,7 +511,7 @@ const [isSavingSettings, setIsSavingSettings] = useState(false);
       setShowEditSettingsModal(true);
     }}
   >
-    <Text style={styles.secondaryButtonText}>Edit Session Settings</Text>
+    <Text style={[styles.secondaryButtonText, { color: theme.primary }]}>Edit Session Settings</Text>
   </Pressable>
 )}
             
@@ -719,16 +723,16 @@ const [isSavingSettings, setIsSavingSettings] = useState(false);
   onRequestClose={() => setShowEditSettingsModal(false)}
 >
   <View style={styles.modalOverlay}>
-    <View style={styles.modalCard}>
+    <View style={[styles.modalCard, { backgroundColor: theme.surface }]}>
       <Text style={styles.modalTitle}>Edit Session Settings</Text>
 
-      <TextInput style={styles.modalInput} value={editBuyIn} onChangeText={setEditBuyIn} />
-      <TextInput style={styles.modalInput} value={editMaxRebuys} onChangeText={setEditMaxRebuys} />
-      <TextInput style={styles.modalInput} value={editSmallBlind} onChangeText={setEditSmallBlind} />
-      <TextInput style={styles.modalInput} value={editBigBlind} onChangeText={setEditBigBlind} />
+      <TextInput style={[styles.modalInput, { backgroundColor: theme.background, borderColor: theme.inputBorder, color: theme.text }]} value={editBuyIn} onChangeText={setEditBuyIn} />
+      <TextInput style={[styles.modalInput, { backgroundColor: theme.background, borderColor: theme.inputBorder, color: theme.text }]} value={editMaxRebuys} onChangeText={setEditMaxRebuys} />
+      <TextInput style={[styles.modalInput, { backgroundColor: theme.background, borderColor: theme.inputBorder, color: theme.text }]} value={editSmallBlind} onChangeText={setEditSmallBlind} />
+      <TextInput style={[styles.modalInput, { backgroundColor: theme.background, borderColor: theme.inputBorder, color: theme.text }]} value={editBigBlind} onChangeText={setEditBigBlind} />
 
-      <Pressable style={styles.primaryButton} onPress={handleSaveSettings}>
-        <Text style={styles.primaryButtonText}>Save</Text>
+      <Pressable style={[styles.primaryButton, { backgroundColor: theme.primary }]} onPress={handleSaveSettings}>
+        <Text style={[styles.primaryButtonText, { color: theme.textOnPrimary }]}>Save</Text>
       </Pressable>
     </View>
   </View>
@@ -742,7 +746,6 @@ const [isSavingSettings, setIsSavingSettings] = useState(false);
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -765,7 +768,6 @@ const styles = StyleSheet.create({
     borderColor: colors.inputBorder,
   },
   primaryButton: {
-  backgroundColor: colors.primary,
   borderRadius: 8,
   paddingVertical: 12,
   paddingHorizontal: 16,
@@ -774,7 +776,6 @@ const styles = StyleSheet.create({
 },
 
 primaryButtonText: {
-  color: colors.textOnPrimary,
   fontWeight: '700',
 },
   codeLabel: {
@@ -971,10 +972,10 @@ primaryButtonText: {
     fontWeight: '800',
   },
   netPositive: {
-    color: '#4CAF50',
+    color: '#2E7D32',
   },
   netNegative: {
-    color: '#EF5350',
+    color: '#C62828',
   },
   removeButton: {
     marginTop: 8,
@@ -1157,7 +1158,6 @@ primaryButtonText: {
     transform: [{ scale: 0.97 }],
   },
   reconnectBanner: {
-  backgroundColor: '#ffcc00',
   paddingVertical: 6,
   alignItems: 'center',
 },
@@ -1168,9 +1168,7 @@ reconnectText: {
 },
 
 secondaryButton: {
-  backgroundColor: '#ffffff',
   borderWidth: 1,
-  borderColor: colors.primary,
   borderRadius: 8,
   paddingVertical: 12,
   paddingHorizontal: 16,
@@ -1179,7 +1177,6 @@ secondaryButton: {
 },
 
 secondaryButtonText: {
-  color: colors.primary,
   fontWeight: '700',
 },
 
@@ -1191,7 +1188,6 @@ modalOverlay: {
 },
 
 modalCard: {
-  backgroundColor: '#ffffff',
   borderRadius: 12,
   padding: 20,
 },
@@ -1205,12 +1201,9 @@ modalTitle: {
 
 modalInput: {
   borderWidth: 1,
-  borderColor: '#cccccc',
   borderRadius: 8,
   paddingHorizontal: 12,
   paddingVertical: 10,
   marginBottom: 12,
-  color: colors.text,
-  backgroundColor: '#ffffff',
 },
 });

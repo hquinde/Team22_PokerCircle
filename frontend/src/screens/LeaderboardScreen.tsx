@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { getLeaderboard } from '../api/api';
 import { BACKEND_URL } from '../config/api';
 import type { LeaderboardEntry } from '../api/api';
@@ -27,6 +27,8 @@ function formatNet(value: number): string {
 }
 
 export default function LeaderboardScreen({ navigation }: Props) {
+  const { theme, colorScheme } = useTheme();
+  const styles = createStyles(theme);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -69,8 +71,8 @@ export default function LeaderboardScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
       <View style={styles.content}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -108,7 +110,9 @@ export default function LeaderboardScreen({ navigation }: Props) {
                   <Text
                     style={[
                       styles.netText,
-                      item.netResult >= 0 ? styles.positive : styles.negative,
+                      item.netResult >= 0
+                        ? { color: colorScheme === 'light' ? '#2E7D32' : '#4CAF50' }
+                        : { color: colorScheme === 'light' ? '#C62828' : '#F44336' },
                     ]}
                   >
                     {formatNet(item.netResult)}
@@ -123,104 +127,100 @@ export default function LeaderboardScreen({ navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  header: {
-    marginBottom: 24,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: 8,
-    marginBottom: 8,
-  },
-  backText: {
-    color: colors.placeholder,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: colors.primary,
-    letterSpacing: 1,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: colors.placeholder,
-    marginTop: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  listContent: {
-    paddingBottom: 40,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.inputBackground,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.inputBorder,
-    padding: 12,
-    marginBottom: 10,
-  },
-  rankSection: {
-    width: 40,
-    alignItems: 'center',
-  },
-  rankText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.placeholder,
-  },
-  avatarSection: {
-    marginRight: 12,
-  },
-  infoSection: {
-    flex: 1,
-  },
-  displayName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  netSection: {
-    alignItems: 'flex-end',
-  },
-  netText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  positive: {
-    color: '#4CAF50',
-  },
-  negative: {
-    color: '#F44336',
-  },
-  emptyText: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    color: colors.placeholder,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-});
+function createStyles(theme: any) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 40,
+    },
+    content: {
+      flex: 1,
+      paddingHorizontal: 20,
+      paddingTop: 20,
+    },
+    header: {
+      marginBottom: 24,
+    },
+    backButton: {
+      alignSelf: 'flex-start',
+      paddingVertical: 8,
+      marginBottom: 8,
+    },
+    backText: {
+      color: theme.placeholder,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    title: {
+      fontSize: 32,
+      fontWeight: '800',
+      color: theme.primary,
+      letterSpacing: 1,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: theme.placeholder,
+      marginTop: 4,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+    },
+    listContent: {
+      paddingBottom: 40,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.inputBackground,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+      padding: 12,
+      marginBottom: 10,
+    },
+    rankSection: {
+      width: 40,
+      alignItems: 'center',
+    },
+    rankText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: theme.placeholder,
+    },
+    avatarSection: {
+      marginRight: 12,
+    },
+    infoSection: {
+      flex: 1,
+    },
+    displayName: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    netSection: {
+      alignItems: 'flex-end',
+    },
+    netText: {
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    emptyText: {
+      color: theme.text,
+      fontSize: 18,
+      fontWeight: '700',
+      textAlign: 'center',
+      marginBottom: 8,
+    },
+    emptySubtext: {
+      color: theme.placeholder,
+      fontSize: 14,
+      textAlign: 'center',
+    },
+  });
+}

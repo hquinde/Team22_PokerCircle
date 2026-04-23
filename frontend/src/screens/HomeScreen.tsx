@@ -11,11 +11,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { RootStackParamList, TabParamList } from '../../App';
 import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import {
   createSession,
   getPendingInvites,
@@ -38,6 +40,7 @@ type Props = CompositeScreenProps<
 >;
 
 export default function HomeScreen({ navigation }: Props) {
+  const { theme, colorScheme } = useTheme();
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [invites, setInvites] = useState<SessionInvite[]>([]);
@@ -338,19 +341,19 @@ export default function HomeScreen({ navigation }: Props) {
       {activeSession?.sessionCode != null && (
         <Pressable
           style={({ pressed }) => [
-            styles.rejoinBanner,
+            styles.rejoinBanner(theme),
             pressed && styles.rejoinBannerPressed,
           ]}
           onPress={handleRejoinSession}
         >
           <View style={styles.rejoinBannerLeft}>
-            <View style={styles.rejoinPulseDot} />
+            <View style={styles.rejoinPulseDot(theme)} />
             <View>
-              <Text style={styles.rejoinBannerLabel}>SESSION IN PROGRESS</Text>
-              <Text style={styles.rejoinBannerCode}>{activeSession.sessionCode}</Text>
+              <Text style={styles.rejoinBannerLabel(theme)}>SESSION IN PROGRESS</Text>
+              <Text style={styles.rejoinBannerCode(theme)}>{activeSession.sessionCode}</Text>
             </View>
           </View>
-          <Text style={styles.rejoinBannerCta}>Rejoin →</Text>
+          <Text style={styles.rejoinBannerCta(theme)}>Rejoin →</Text>
         </Pressable>
       )}
 
@@ -457,6 +460,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1 }}>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <FlatList
         style={styles.container}
         contentContainerStyle={styles.listContent}
@@ -800,20 +804,20 @@ privacyOptionTextActive: {
   },
 
   // ── TM22-146: Rejoin banner ─────────────────────────────────────────────
-  rejoinBanner: {
+  rejoinBanner: (theme: any) => ({
     width: '100%',
     maxWidth: 320,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1A2A1A',
+    backgroundColor: theme.surface,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#4CAF50',
+    borderColor: theme.accent,
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginBottom: 20,
-  },
+  }),
   rejoinBannerPressed: {
     opacity: 0.8,
   },
@@ -822,31 +826,31 @@ privacyOptionTextActive: {
     alignItems: 'center',
     gap: 12,
   },
-  rejoinPulseDot: {
+  rejoinPulseDot: (theme: any) => ({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#4CAF50',
-  },
-  rejoinBannerLabel: {
+    backgroundColor: theme.accent,
+  }),
+  rejoinBannerLabel: (theme: any) => ({
     fontSize: 9,
     fontWeight: '800',
-    color: '#4CAF50',
+    color: theme.accent,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
     marginBottom: 2,
-  },
-  rejoinBannerCode: {
+  }),
+  rejoinBannerCode: (theme: any) => ({
     fontSize: 18,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: theme.text,
     letterSpacing: 4,
-  },
-  rejoinBannerCta: {
+  }),
+  rejoinBannerCta: (theme: any) => ({
     fontSize: 14,
     fontWeight: '700',
-    color: '#4CAF50',
-  },
+    color: theme.accent,
+  }),
 
   inviteSection: {
     width: '100%',

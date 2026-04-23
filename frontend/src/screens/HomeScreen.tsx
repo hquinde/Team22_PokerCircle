@@ -507,7 +507,7 @@ export default function HomeScreen({ navigation }: Props) {
     <View style={{ flex: 1 }}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <FlatList
-        style={styles.container}
+        style={[styles.container, { backgroundColor: theme.background }]}
         contentContainerStyle={styles.listContent}
         data={invites}
         keyExtractor={(item) => item.id.toString()}
@@ -516,9 +516,9 @@ export default function HomeScreen({ navigation }: Props) {
         renderItem={({ item }) => {
           const isResponding = respondingTo === item.id;
           return (
-            <View style={styles.inviteRow}>
-              <Text style={styles.inviteFrom}>From: {item.inviterUsername}</Text>
-              <Text style={styles.inviteCode}>{item.sessionCode}</Text>
+            <View style={[styles.inviteRow, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}>
+              <Text style={[styles.inviteFrom, { color: theme.text }]}>From: {item.inviterUsername}</Text>
+              <Text style={[styles.inviteCode, { color: theme.primary }]}>{item.sessionCode}</Text>
               <View style={styles.inviteActions}>
                 <Pressable
                   style={[styles.acceptButton, isResponding && styles.actionDisabled]}

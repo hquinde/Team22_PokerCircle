@@ -10,10 +10,10 @@ import {
 } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
-import { colors } from '../theme/colors';
 import { getSessionPlayers, getSessionResults } from '../api/api';
 import type { PlayerResult, SettlementTransaction } from '../api/api';
 import type { Player } from '../types/session';
+import { useTheme } from '../theme/ThemeContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 
@@ -25,6 +25,8 @@ function formatAmount(value: number): string {
 
 export default function SessionDetailScreen({ route, navigation }: Props) {
   const { sessionCode } = route.params;
+  const { theme, colorScheme } = useTheme();
+  const styles = getStyles(theme);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,8 +82,8 @@ export default function SessionDetailScreen({ route, navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} backgroundColor={theme.background} />
       
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -153,10 +155,10 @@ export default function SessionDetailScreen({ route, navigation }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: ReturnType<typeof useTheme>['theme']) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
   },
   centered: {
     flex: 1,
@@ -168,7 +170,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.inputBorder,
+    borderBottomColor: theme.inputBorder,
     alignItems: 'center',
   },
   backButton: {
@@ -178,19 +180,19 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   backText: {
-    color: colors.placeholder,
+    color: theme.placeholder,
     fontSize: 14,
     fontWeight: '600',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: colors.text,
+    color: theme.text,
     letterSpacing: 0.5,
   },
   sessionCode: {
     fontSize: 12,
-    color: colors.primary,
+    color: theme.primary,
     fontWeight: '700',
     letterSpacing: 2,
     marginTop: 2,
@@ -202,16 +204,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.placeholder,
+    color: theme.placeholder,
     textTransform: 'uppercase',
     letterSpacing: 1.5,
     marginBottom: 16,
   },
   table: {
-    backgroundColor: colors.inputBackground,
+    backgroundColor: theme.inputBackground,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
+    borderColor: theme.inputBorder,
     overflow: 'hidden',
   },
   tableRow: {
@@ -219,21 +221,21 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.inputBorder,
+    borderBottomColor: theme.inputBorder,
     alignItems: 'center',
   },
   tableHeader: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: theme.surface,
   },
   headerText: {
     fontWeight: '700',
-    color: colors.placeholder,
+    color: theme.placeholder,
     fontSize: 11,
     textTransform: 'uppercase',
   },
   cell: {
     fontSize: 13,
-    color: colors.text,
+    color: theme.text,
   },
   playerCell: {
     flex: 2,
@@ -246,16 +248,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   positive: {
-    color: '#4CAF50',
+    color: theme.accent,
   },
   negative: {
     color: '#F44336',
   },
   transactionCard: {
-    backgroundColor: colors.inputBackground,
+    backgroundColor: theme.inputBackground,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
+    borderColor: theme.inputBorder,
     padding: 16,
     marginBottom: 12,
     flexDirection: 'row',
@@ -271,41 +273,41 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   creditorName: {
-    color: '#4CAF50',
+    color: theme.accent,
     fontWeight: '700',
   },
   normalText: {
-    color: colors.text,
+    color: theme.text,
   },
   transactionAmount: {
     fontSize: 16,
     fontWeight: '800',
-    color: colors.text,
+    color: theme.text,
     marginLeft: 12,
   },
   emptyCard: {
-    backgroundColor: colors.inputBackground,
+    backgroundColor: theme.inputBackground,
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
     borderStyle: 'dashed',
     borderWidth: 1,
-    borderColor: colors.inputBorder,
+    borderColor: theme.inputBorder,
   },
   emptyText: {
-    color: colors.placeholder,
+    color: theme.placeholder,
     fontSize: 14,
     textAlign: 'center',
   },
   backButtonLarge: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     paddingVertical: 14,
     paddingHorizontal: 32,
     borderRadius: 30,
     marginTop: 20,
   },
   backButtonLargeText: {
-    color: colors.textOnPrimary,
+    color: theme.textOnPrimary,
     fontSize: 16,
     fontWeight: '700',
   },

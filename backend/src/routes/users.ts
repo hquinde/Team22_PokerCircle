@@ -223,6 +223,66 @@ router.patch(
   })
 );
 
+// PATCH /api/users/:userId/notification-preferences
+router.patch(
+  '/:userId/notification-preferences',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const { friendRequests, sessionInvites } = req.body as {
+      friendRequests?: boolean;
+      sessionInvites?: boolean;
+    };
+
+    if (String(req.session.userId) !== userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    if (
+      typeof friendRequests !== 'boolean' ||
+      typeof sessionInvites !== 'boolean'
+    ) {
+      return res.status(400).json({ error: 'friendRequests and sessionInvites must be booleans' });
+    }
+
+    await pool.query(
+      `UPDATE users SET notification_preferences = $1::jsonb WHERE user_id = $2`,
+      [JSON.stringify({ friendRequests, sessionInvites }), userId]
+    );
+
+    return res.json({ ok: true });
+  })
+);
+
+// GET /api/users/:userId/notification-preferences
+router.get(
+  '/:userId/notification-preferences',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+
+    if (String(req.session.userId) !== userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const result = await pool.query(
+      `SELECT notification_preferences FROM users WHERE user_id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const prefs = result.rows[0].notification_preferences || {
+      friendRequests: true,
+      sessionInvites: true,
+    };
+
+    return res.json(prefs);
+  })
+);
+
 // PATCH /api/users/:userId/displayname
 // Updates the display name (username) for a user
 router.patch(

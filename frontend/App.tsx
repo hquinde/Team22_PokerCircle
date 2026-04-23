@@ -1,11 +1,12 @@
 import 'react-native-gesture-handler';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
 
 import HomeScreen from './src/screens/HomeScreen';
 import JoinSessionScreen from './src/screens/JoinSessionScreen';
@@ -102,6 +103,8 @@ type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
 export default function App() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
+  const navigationRef = useRef<any>(null);
+  const notifListenerRef = useRef<any>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,63 +181,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <NavigationContainer>
-        <StatusBar style="auto" />
-        <Stack.Navigator
-          initialRouteName={authStatus === 'authenticated' ? 'MainTabs' : 'Welcome'}
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: colors.background,
-              elevation: 0,
-              shadowOpacity: 0,
-              borderBottomWidth: 0,
-            },
-            headerTintColor: colors.primary,
-            headerTitle: '',
-          }}
-        >
-          <Stack.Screen
-            name="Welcome"
-            component={WelcomeScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Signup"
-            component={SignupScreen}
-            options={{ headerShown: false }}
-          />
-
-          <Stack.Screen
-            name="MainTabs"
-            component={MainTabs}
-            options={{ headerShown: false }}
-          />
-
-          <Stack.Screen name="Leaderboard" component={LeaderboardScreen} />
-          <Stack.Screen name="Discover" component={DiscoverScreen} />
-          <Stack.Screen name="JoinSession" component={JoinSessionScreen} />
-          <Stack.Screen name="Lobby" component={LobbyScreen} />
-          <Stack.Screen name="InviteFriends" component={InviteFriendsScreen} />
-          <Stack.Screen name="Game" component={GameScreen} />
-          <Stack.Screen
-            name="Results"
-            component={ResultsScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="SessionDetail"
-            component={SessionDetailScreen}
-            options={{ headerShown: false }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </ErrorBoundary>
-    <NavigationContainer ref={navigationRef}>
+      <NavigationContainer ref={navigationRef}>
       <StatusBar style="auto" />
       <Stack.Navigator
         initialRouteName={authStatus === 'authenticated' ? 'MainTabs' : 'Welcome'}
@@ -268,6 +215,7 @@ export default function App() {
         <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
+    </ErrorBoundary>
   );
 }
 

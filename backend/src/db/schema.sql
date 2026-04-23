@@ -133,3 +133,6 @@ BEGIN
     );
   END IF;
 END $$;
+
+-- Notification preferences (TM22-163)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_preferences JSONB DEFAULT '{"friendRequests": true, "sessionInvites": true}'::jsonb;

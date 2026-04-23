@@ -48,16 +48,6 @@ export async function getSession(sessionCode: string): Promise<Session> {
 }
 
 export async function createSession(
-  buyInAmount: number,
-  maxRebuys: number,
-  privacy: 'public' | 'private' = 'private'
-) {
-  const response = await fetch(`${BACKEND_URL}/api/sessions`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-    },
   buyInAmount = 0,
   maxRebuys = 0,
   privacy: 'public' | 'private' = 'private'
@@ -474,4 +464,37 @@ export async function getActiveSession(userId: string): Promise<ActiveSessionInf
     });
   }
   return response.json() as Promise<ActiveSessionInfo>;
+}
+
+// ---------------------------------------------------------------------------
+// Notification preferences
+// ---------------------------------------------------------------------------
+
+export async function getNotificationPreferences(userId: string): Promise<{
+  friendRequests: boolean;
+  sessionInvites: boolean;
+}> {
+  const response = await fetch(
+    `${BACKEND_URL}/api/users/${userId}/notification-preferences`,
+    { credentials: 'include' }
+  );
+  if (!response.ok) throw new Error('Failed to fetch notification preferences');
+  return response.json();
+}
+
+export async function updateNotificationPreferences(
+  userId: string,
+  prefs: { friendRequests: boolean; sessionInvites: boolean }
+): Promise<{ ok: true }> {
+  const response = await fetch(
+    `${BACKEND_URL}/api/users/${userId}/notification-preferences`,
+    {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(prefs),
+    }
+  );
+  if (!response.ok) throw new Error('Failed to update notification preferences');
+  return response.json();
 }

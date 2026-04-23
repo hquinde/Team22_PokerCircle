@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { getPublicSessions } from '../api/api';
 import type { PublicSessionInfo } from '../api/api';
 import AvatarDisplay from '../components/AvatarDisplay';
@@ -25,6 +25,7 @@ function formatAmount(n: number) {
 }
 
 export default function DiscoverScreen({ navigation }: Props) {
+  const { theme, colorScheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<PublicSessionInfo[]>([]);
@@ -52,23 +53,23 @@ export default function DiscoverScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
       <View style={styles.content}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backText}>← Back</Text>
+            <Text style={[styles.backText, { color: theme.placeholder }]}>← Back</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Discover</Text>
-          <Text style={styles.subtitle}>Open Public Sessions</Text>
+          <Text style={[styles.title, { color: theme.primary }]}>Discover</Text>
+          <Text style={[styles.subtitle, { color: theme.placeholder }]}>Open Public Sessions</Text>
         </View>
 
         {error && <ErrorMessage message={error} onRetry={loadSessions} />}
 
         {!error && sessions.length === 0 ? (
           <View style={styles.centered}>
-            <Text style={styles.emptyText}>No public tables found</Text>
-            <Text style={styles.emptySubtext}>Try creating one or join via code!</Text>
+            <Text style={[styles.emptyText, { color: theme.text }]}>No public tables found</Text>
+            <Text style={[styles.emptySubtext, { color: theme.placeholder }]}>Try creating one or join via code!</Text>
           </View>
         ) : (
           <FlatList
@@ -79,37 +80,37 @@ export default function DiscoverScreen({ navigation }: Props) {
             refreshing={loading}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={styles.card}
+                style={[styles.card, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}
                 onPress={() => navigation.navigate('JoinSession', { preFilledCode: item.sessionCode })}
               >
                 <View style={styles.cardTop}>
                   <View style={styles.hostInfo}>
                     <AvatarDisplay avatarId={item.hostAvatar} size={32} />
                     <View>
-                      <Text style={styles.hostName}>{item.hostUsername}'s Game</Text>
-                      <Text style={styles.sessionCode}>{item.sessionCode}</Text>
+                      <Text style={[styles.hostName, { color: theme.text }]}>{item.hostUsername}'s Game</Text>
+                      <Text style={[styles.sessionCode, { color: theme.primary }]}>{item.sessionCode}</Text>
                     </View>
                   </View>
-                  <View style={styles.playerCountBadge}>
-                    <Text style={styles.playerCountText}>{item.playerCount} players</Text>
+                  <View style={[styles.playerCountBadge, { backgroundColor: theme.surface }]}>
+                    <Text style={[styles.playerCountText, { color: theme.placeholder }]}>{item.playerCount} players</Text>
                   </View>
                 </View>
 
-                <View style={styles.cardBottom}>
+                <View style={[styles.cardBottom, { borderTopColor: theme.border }]}>
                   <View style={styles.settingItem}>
-                    <Text style={styles.settingLabel}>BUY-IN</Text>
-                    <Text style={styles.settingValue}>
+                    <Text style={[styles.settingLabel, { color: theme.placeholder }]}>BUY-IN</Text>
+                    <Text style={[styles.settingValue, { color: theme.text }]}>
                       {item.buyInAmount > 0 ? formatAmount(item.buyInAmount) : 'No limit'}
                     </Text>
                   </View>
                   <View style={styles.settingItem}>
-                    <Text style={styles.settingLabel}>REBUYS</Text>
-                    <Text style={styles.settingValue}>
+                    <Text style={[styles.settingLabel, { color: theme.placeholder }]}>REBUYS</Text>
+                    <Text style={[styles.settingValue, { color: theme.text }]}>
                       {item.maxRebuys === 0 ? 'Unlimited' : `Max ${item.maxRebuys}`}
                     </Text>
                   </View>
-                  <View style={styles.joinBtn}>
-                    <Text style={styles.joinBtnText}>Join →</Text>
+                  <View style={[styles.joinBtn, { backgroundColor: theme.primary }]}>
+                    <Text style={[styles.joinBtnText, { color: theme.textOnPrimary }]}>Join →</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -124,7 +125,6 @@ export default function DiscoverScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   content: {
     flex: 1,
@@ -146,19 +146,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   backText: {
-    color: colors.placeholder,
     fontSize: 14,
     fontWeight: '600',
   },
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: colors.primary,
     letterSpacing: 1,
   },
   subtitle: {
     fontSize: 14,
-    color: colors.placeholder,
     marginTop: 4,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -167,12 +164,10 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   card: {
-    backgroundColor: colors.inputBackground,
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
   },
   cardTop: {
     flexDirection: 'row',
@@ -186,24 +181,20 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   hostName: {
-    color: colors.text,
     fontSize: 15,
     fontWeight: '700',
   },
   sessionCode: {
-    color: colors.primary,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 2,
   },
   playerCountBadge: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
   playerCountText: {
-    color: colors.placeholder,
     fontSize: 11,
     fontWeight: '600',
   },
@@ -211,7 +202,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
     paddingTop: 16,
   },
   settingItem: {
@@ -219,36 +209,30 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     fontSize: 9,
-    color: colors.placeholder,
     fontWeight: '800',
     letterSpacing: 1,
     marginBottom: 4,
   },
   settingValue: {
-    color: colors.text,
     fontSize: 13,
     fontWeight: '700',
   },
   joinBtn: {
-    backgroundColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
   },
   joinBtnText: {
-    color: colors.textOnPrimary,
     fontSize: 13,
     fontWeight: '700',
   },
   emptyText: {
-    color: colors.text,
     fontSize: 18,
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: 8,
   },
   emptySubtext: {
-    color: colors.placeholder,
     fontSize: 14,
     textAlign: 'center',
   },

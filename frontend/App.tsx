@@ -27,6 +27,7 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 import { BACKEND_URL } from './src/config/api';
 import { loadAuth } from './src/services/authStorage';
 import { colors } from './src/theme/colors';
+import { ThemeProvider } from './src/theme/ThemeContext';
 
 export type TabParamList = {
   Home: undefined;
@@ -180,42 +181,44 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary>
-      <NavigationContainer ref={navigationRef}>
-      <StatusBar style="auto" />
-      <Stack.Navigator
-        initialRouteName={authStatus === 'authenticated' ? 'MainTabs' : 'Welcome'}
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: colors.background,
-            elevation: 0,
-            shadowOpacity: 0,
-            borderBottomWidth: 0,
-          },
-          headerTintColor: colors.primary,
-          headerTitle: '',
-        }}
-      >
-        {/* AUTH */}
-        <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
+    <ThemeProvider>
+      <ErrorBoundary>
+        <NavigationContainer ref={navigationRef}>
+        <StatusBar style="auto" />
+        <Stack.Navigator
+          initialRouteName={authStatus === 'authenticated' ? 'MainTabs' : 'Welcome'}
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: colors.background,
+              elevation: 0,
+              shadowOpacity: 0,
+              borderBottomWidth: 0,
+            },
+            headerTintColor: colors.primary,
+            headerTitle: '',
+          }}
+        >
+          {/* AUTH */}
+          <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Signup" component={SignupScreen} options={{ headerShown: false }} />
 
-        {/* MAIN APP (WITH TABS) */}
-        <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+          {/* MAIN APP (WITH TABS) */}
+          <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
 
-        {/* SESSION SCREENS (NO TAB BAR) */}
-        <Stack.Screen name="JoinSession" component={JoinSessionScreen} />
-        <Stack.Screen name="Lobby" component={LobbyScreen} />
-        <Stack.Screen name="InviteFriends" component={InviteFriendsScreen} />
-        <Stack.Screen name="Game" component={GameScreen} />
-        <Stack.Screen name="Results" component={ResultsScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
-      </Stack.Navigator>
-    </NavigationContainer>
-    </ErrorBoundary>
+          {/* SESSION SCREENS (NO TAB BAR) */}
+          <Stack.Screen name="JoinSession" component={JoinSessionScreen} />
+          <Stack.Screen name="Lobby" component={LobbyScreen} />
+          <Stack.Screen name="InviteFriends" component={InviteFriendsScreen} />
+          <Stack.Screen name="Game" component={GameScreen} />
+          <Stack.Screen name="Results" component={ResultsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="SessionDetail" component={SessionDetailScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Discover" component={DiscoverScreen} options={{ headerShown: false }} />
+        </Stack.Navigator>
+      </NavigationContainer>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 }
 

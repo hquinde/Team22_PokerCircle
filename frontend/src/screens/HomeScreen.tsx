@@ -351,7 +351,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   if (screenError) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
         <ErrorMessage message={screenError} onRetry={() => loadHomeData()} />
       </View>
     );
@@ -516,9 +516,9 @@ export default function HomeScreen({ navigation }: Props) {
         renderItem={({ item }) => {
           const isResponding = respondingTo === item.id;
           return (
-            <View style={[styles.inviteRow, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}>
-              <Text style={[styles.inviteFrom, { color: theme.text }]}>From: {item.inviterUsername}</Text>
-              <Text style={[styles.inviteCode, { color: theme.primary }]}>{item.sessionCode}</Text>
+            <View style={styles.inviteRow}>
+              <Text style={styles.inviteFrom}>From: {item.inviterUsername}</Text>
+              <Text style={styles.inviteCode}>{item.sessionCode}</Text>
               <View style={styles.inviteActions}>
                 <Pressable
                   style={[styles.acceptButton, isResponding && styles.actionDisabled]}

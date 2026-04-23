@@ -5,6 +5,7 @@ import {
   Platform,
   Pressable,
   SafeAreaView,
+  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -13,7 +14,7 @@ import type { StackScreenProps } from '@react-navigation/stack';
 import type { RootStackParamList } from '../../App';
 import { socket } from '../services/socket';
 import { getSession } from '../api/api';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { BACKEND_URL } from '../config/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
@@ -39,6 +40,7 @@ type GameStartPayload = {
 
 export default function LobbyScreen({ route, navigation }: Props) {
   const { sessionCode } = route.params;
+  const { theme, colorScheme } = useTheme();
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
@@ -367,11 +369,12 @@ export default function LobbyScreen({ route, navigation }: Props) {
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar barStyle={colorScheme === 'dark' ? 'light' : 'dark'} backgroundColor={theme.background} />
         <View style={styles.errorContent}>
           <ErrorMessage message={error} onRetry={handleRetry} />
-          <Pressable style={styles.button} onPress={() => navigation.goBack()}>
-            <Text style={styles.buttonText}>Go Back</Text>
+          <Pressable style={[styles.button, { backgroundColor: theme.primary }]} onPress={() => navigation.goBack()}>
+            <Text style={[styles.buttonText, { color: theme.textOnPrimary }]}>Go Back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -381,50 +384,53 @@ export default function LobbyScreen({ route, navigation }: Props) {
   const allReady = players.length >= 2 && players.every((p) => p.isReady);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={colorScheme === 'dark' ? 'light' : 'dark'} backgroundColor={theme.background} />
       <View style={styles.header}>
-        <Text style={styles.sessionCode}>{sessionCode}</Text>
-        <Text style={styles.playerCount}>
+        <Text style={[styles.sessionCode, { color: theme.primary }]}>{sessionCode}</Text>
+        <Text style={[styles.playerCount, { color: theme.text }]}>
           {players.length} {players.length === 1 ? 'player' : 'players'}
         </Text>
       </View>
 
       {(buyInAmount > 0 || maxRebuys > 0) && (
-        <View style={styles.rulesCard}>
+        <View style={[styles.rulesCard, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}>
           <View style={styles.privacyBadgeRow}>
             <View
               style={[
                 styles.privacyBadge,
-                privacy === 'public' ? styles.publicBadge : styles.privateBadge,
+                privacy === 'public'
+                  ? { borderColor: theme.accent, backgroundColor: `${theme.accent}1A` }
+                  : { borderColor: theme.placeholder, backgroundColor: theme.surface },
               ]}
             >
-              <Text style={styles.privacyBadgeText}>{privacy.toUpperCase()}</Text>
+              <Text style={[styles.privacyBadgeText, { color: theme.text }]}>{privacy.toUpperCase()}</Text>
             </View>
           </View>
           {buyInAmount > 0 && (
-            <Text style={styles.ruleText}>Buy-in: ${buyInAmount}</Text>
+            <Text style={[styles.ruleText, { color: theme.text }]}>Buy-in: ${buyInAmount}</Text>
           )}
-          <Text style={styles.ruleText}>
+          <Text style={[styles.ruleText, { color: theme.text }]}>
             Rebuys: {maxRebuys === 0 ? 'Unlimited' : `Max ${maxRebuys}`}
           </Text>
         </View>
       )}
 
       {isJoining && (
-        <View style={styles.infoBox}>
-          <Text style={styles.infoText}>Joining lobby...</Text>
+        <View style={[styles.infoBox, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}>
+          <Text style={[styles.infoText, { color: theme.text }]}>Joining lobby...</Text>
         </View>
       )}
 
       {joinMessage && !isJoining && (
-        <View style={styles.successBox}>
-          <Text style={styles.successText}>{joinMessage}</Text>
+        <View style={[styles.successBox, { backgroundColor: theme.inputBackground, borderColor: theme.primary }]}>
+          <Text style={[styles.successText, { color: theme.primary }]}>{joinMessage}</Text>
         </View>
       )}
 
       {statusMessage && !isJoining && (
-        <View style={styles.statusBox}>
-          <Text style={styles.statusText}>{statusMessage}</Text>
+        <View style={[styles.statusBox, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}>
+          <Text style={[styles.statusText, { color: theme.text }]}>{statusMessage}</Text>
         </View>
       )}
 
@@ -437,31 +443,36 @@ export default function LobbyScreen({ route, navigation }: Props) {
           const isMe = item.name === resolvedPlayerNameRef.current;
 
           return (
-            <View style={styles.playerRow}>
+            <View style={[styles.playerRow, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}>
               <View style={styles.playerLeft}>
                 <AvatarDisplay avatarId={item.avatar} size={36} />
                 <View style={styles.playerInfo}>
-                  <Text style={styles.playerName}>{item.name}</Text>
-                  <Text style={styles.playerLabel}>Player {index + 1}</Text>
+                  <Text style={[styles.playerName, { color: theme.text }]}>{item.name}</Text>
+                  <Text style={[styles.playerLabel, { color: theme.placeholder }]}>Player {index + 1}</Text>
                 </View>
               </View>
 
               {isMe ? (
                 <Pressable
                   onPress={handleReadyToggle}
-                  style={[styles.readyButton, item.isReady && styles.readyButtonActive]}
+                  style={[
+                    styles.readyButton,
+                    item.isReady && { borderColor: theme.primary, backgroundColor: theme.primary },
+                    !item.isReady && { borderColor: theme.placeholder },
+                  ]}
                 >
                   <Text
                     style={[
                       styles.readyButtonText,
-                      item.isReady && styles.readyButtonTextActive,
+                      item.isReady && { color: theme.textOnPrimary },
+                      !item.isReady && { color: theme.placeholder },
                     ]}
                   >
                     {item.isReady ? 'Not Ready' : 'Ready'}
                   </Text>
                 </Pressable>
               ) : (
-                <Text style={item.isReady ? styles.readyBadge : styles.notReadyBadge}>
+                <Text style={item.isReady ? { fontSize: 12, fontWeight: '600', color: theme.primary } : { fontSize: 12, fontWeight: '600', color: theme.placeholder }}>
                   {item.isReady ? 'Ready' : 'Not Ready'}
                 </Text>
               )}
@@ -471,8 +482,8 @@ export default function LobbyScreen({ route, navigation }: Props) {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>Lobby is empty</Text>
-            <Text style={styles.emptyText}>Waiting for players to join...</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>Lobby is empty</Text>
+            <Text style={[styles.emptyText, { color: theme.placeholder }]}>Waiting for players to join...</Text>
           </View>
         }
       />
@@ -482,15 +493,16 @@ export default function LobbyScreen({ route, navigation }: Props) {
           <Pressable
             style={({ pressed }) => [
               styles.inviteButton,
+              { borderColor: theme.primary },
               pressed && styles.inviteButtonPressed,
             ]}
             onPress={() => navigation.navigate('InviteFriends', { sessionCode })}
           >
-            <Text style={styles.inviteButtonText}>Invite Friends</Text>
+            <Text style={[styles.inviteButtonText, { color: theme.text }]}>Invite Friends</Text>
           </Pressable>
 
           {!allReady && (
-            <Text style={styles.waitingText}>
+            <Text style={[styles.waitingText, { color: theme.placeholder }]}>
               {players.length < 2
                 ? 'Waiting for at least 2 players...'
                 : 'Waiting for all players to ready up...'}
@@ -500,12 +512,13 @@ export default function LobbyScreen({ route, navigation }: Props) {
           <Pressable
             style={[
               styles.startButton,
+              { backgroundColor: theme.primary },
               (!allReady || isStarting) && styles.startButtonDisabled,
             ]}
             onPress={handleStartGame}
             disabled={!allReady || isStarting}
           >
-            <Text style={styles.startButtonText}>
+            <Text style={[styles.startButtonText, { color: theme.textOnPrimary }]}>
               {isStarting ? 'Starting...' : 'Start Game'}
             </Text>
           </Pressable>
@@ -516,12 +529,13 @@ export default function LobbyScreen({ route, navigation }: Props) {
         <Pressable
           style={[
             styles.leaveButton,
+            { backgroundColor: theme.primaryDark },
             isLeaving && styles.leaveButtonDisabled,
           ]}
           onPress={handleLeaveSession}
           disabled={isLeaving}
         >
-          <Text style={styles.leaveButtonText}>
+          <Text style={[styles.leaveButtonText, { color: theme.textOnPrimary }]}>
             {isLeaving ? 'Leaving...' : 'Leave Session'}
           </Text>
         </Pressable>
@@ -531,15 +545,14 @@ export default function LobbyScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
   header: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 16 },
   sessionCode: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: colors.primary,
     letterSpacing: 8,
   },
-  playerCount: { fontSize: 16, color: colors.text, marginTop: 8 },
+  playerCount: { fontSize: 16, marginTop: 8 },
 
   infoBox: {
     marginHorizontal: 16,
@@ -547,11 +560,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 8,
-    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
   },
-  infoText: { color: colors.text, fontSize: 14, textAlign: 'center' },
+  infoText: { fontSize: 14, textAlign: 'center' },
 
   successBox: {
     marginHorizontal: 16,
@@ -559,12 +570,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 8,
-    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: colors.primary,
   },
   successText: {
-    color: colors.primary,
     fontSize: 14,
     textAlign: 'center',
     fontWeight: '600',
@@ -576,49 +584,39 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 8,
-    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
   },
-  statusText: { color: colors.text, fontSize: 14, textAlign: 'center' },
+  statusText: { fontSize: 14, textAlign: 'center' },
 
   listContent: { paddingHorizontal: 16, flexGrow: 1 },
 
   playerRow: {
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: colors.inputBackground,
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  playerName: { fontSize: 16, color: colors.text, fontWeight: '600' },
-  playerLabel: { marginTop: 4, fontSize: 12, color: colors.placeholder },
-
-  readyBadge: { fontSize: 12, fontWeight: '600', color: colors.primary },
-  notReadyBadge: { fontSize: 12, fontWeight: '600', color: colors.placeholder },
+  playerName: { fontSize: 16, fontWeight: '600' },
+  playerLabel: { marginTop: 4, fontSize: 12 },
 
   readyButton: {
     borderWidth: 1,
-    borderColor: colors.placeholder,
     borderRadius: 6,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
   readyButtonActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
   },
-  readyButtonText: { fontSize: 12, fontWeight: '600', color: colors.placeholder },
-  readyButtonTextActive: { color: colors.textOnPrimary },
+  readyButtonText: { fontSize: 12, fontWeight: '600' },
+  readyButtonTextActive: { },
 
   emptyState: { marginTop: 48, alignItems: 'center', paddingHorizontal: 24 },
-  emptyTitle: { fontSize: 18, fontWeight: '600', color: colors.text, marginBottom: 8 },
-  emptyText: { textAlign: 'center', color: colors.placeholder, fontSize: 16 },
+  emptyTitle: { fontSize: 18, fontWeight: '600', marginBottom: 8 },
+  emptyText: { textAlign: 'center', fontSize: 16 },
 
   errorContent: {
     flex: 1,
@@ -627,41 +625,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   button: {
-    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 14,
     paddingHorizontal: 32,
     alignItems: 'center',
     marginTop: 8,
   },
-  buttonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '600' },
+  buttonText: { fontSize: 16, fontWeight: '600' },
 
   startButtonContainer: { padding: 16, paddingBottom: 12 },
   waitingText: {
     textAlign: 'center',
-    color: colors.placeholder,
     fontSize: 13,
     marginBottom: 8,
   },
   startButton: {
-    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
   },
   startButtonDisabled: { opacity: 0.4 },
-  startButtonText: { color: colors.textOnPrimary, fontSize: 16, fontWeight: '700' },
+  startButtonText: { fontSize: 16, fontWeight: '700' },
 
   inviteButton: {
     borderWidth: 1.5,
-    borderColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 12,
   },
   inviteButtonPressed: { opacity: 0.85 },
-  inviteButtonText: { color: colors.text, fontSize: 15, fontWeight: '600' },
+  inviteButtonText: { fontSize: 15, fontWeight: '600' },
 
   playerLeft: { flexDirection: 'row', alignItems: 'center' },
   playerInfo: { marginLeft: 10 },
@@ -672,13 +666,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 8,
-    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
     alignItems: 'center',
   },
   ruleText: {
-    color: colors.text,
     fontSize: 14,
     fontWeight: '600',
     marginVertical: 2,
@@ -692,19 +683,10 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
   },
-  publicBadge: {
-    borderColor: '#4CAF50',
-    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-  },
-  privateBadge: {
-    borderColor: colors.placeholder,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
   privacyBadgeText: {
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1,
-    color: colors.text,
   },
 
   leaveButtonContainer: {
@@ -712,7 +694,6 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   leaveButton: {
-    backgroundColor: '#8B1E1E',
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
@@ -721,7 +702,6 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   leaveButtonText: {
-    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
   },

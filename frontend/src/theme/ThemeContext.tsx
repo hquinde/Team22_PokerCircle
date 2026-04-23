@@ -39,7 +39,8 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const determineColorScheme = (): 'light' | 'dark' => {
     if (colorSchemeOverride === 'system') {
-      return systemColorScheme === 'dark' ? 'dark' : 'light';
+      const scheme = systemColorScheme || Appearance.getColorScheme();
+      return scheme === 'dark' ? 'dark' : 'light';
     }
     return colorSchemeOverride;
   };

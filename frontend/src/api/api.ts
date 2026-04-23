@@ -48,16 +48,6 @@ export async function getSession(sessionCode: string): Promise<Session> {
 }
 
 export async function createSession(
-  buyInAmount: number,
-  maxRebuys: number,
-  privacy: 'public' | 'private' = 'private'
-) {
-  const response = await fetch(`${BACKEND_URL}/api/sessions`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-    },
   buyInAmount = 0,
   maxRebuys = 0,
   privacy: 'public' | 'private' = 'private'

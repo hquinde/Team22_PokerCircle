@@ -47,4 +47,4 @@ export const darkTheme: ThemeColors = {
 };
 
 // Legacy export for backwards compatibility during migration
-export const colors = darkTheme;
+export const colors = lightTheme;

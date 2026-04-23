@@ -109,7 +109,7 @@ function AppContent({ authStatus, navigationRef }: { authStatus: AuthStatus; nav
   return (
     <ErrorBoundary>
       <NavigationContainer ref={navigationRef}>
-        <StatusBar barStyle={colorScheme === 'dark' ? 'light' : 'dark'} backgroundColor={theme.background} />
+        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
         <Stack.Navigator
           initialRouteName={authStatus === 'authenticated' ? 'MainTabs' : 'Welcome'}
           screenOptions={{

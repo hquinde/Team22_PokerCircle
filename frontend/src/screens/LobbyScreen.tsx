@@ -370,7 +370,7 @@ export default function LobbyScreen({ route, navigation }: Props) {
   if (error) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-        <StatusBar barStyle={colorScheme === 'dark' ? 'light' : 'dark'} backgroundColor={theme.background} />
+        <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} />
         <View style={styles.errorContent}>
           <ErrorMessage message={error} onRetry={handleRetry} />
           <Pressable style={[styles.button, { backgroundColor: theme.primary }]} onPress={() => navigation.goBack()}>

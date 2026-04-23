@@ -16,7 +16,7 @@ import type { StackScreenProps } from '@react-navigation/stack';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { RootStackParamList, TabParamList } from '../../App';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { getUserStats, getUserSessions, updateDisplayName, updateAvatar, getNotificationPreferences, updateNotificationPreferences } from '../api/api';
 import { exportSessionsToCSV } from '../utils/exportCSV';
 import { BACKEND_URL } from '../config/api';
@@ -43,6 +43,7 @@ function formatDate(iso: string): string {
 }
 
 export default function ProfileScreen({ navigation }: Props) {
+  const { theme, colorScheme, colorSchemeOverride, setColorScheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<number>(0);
   const [username, setUsername] = useState('');
@@ -163,35 +164,35 @@ export default function ProfileScreen({ navigation }: Props) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#0D0D0D" />
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
         <View style={styles.centered}>
-          <ActivityIndicator color={colors.primary} />
+          <ActivityIndicator color={theme.primary} />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0D0D0D" />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
       <View style={styles.content}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backText}>← Back</Text>
+            <Text style={[styles.backText, { color: theme.placeholder }]}>← Back</Text>
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity onPress={() => setPickerVisible(true)} style={styles.avatarWrapper}>
           <AvatarDisplay avatarId={avatar} size={72} />
-          <Text style={styles.avatarEditHint}>Tap to change</Text>
+          <Text style={[styles.avatarEditHint, { color: theme.placeholder }]}>Tap to change</Text>
         </TouchableOpacity>
 
         <View style={styles.titleRow}>
           {editMode ? (
             <>
               <TextInput
-                style={styles.nameInput}
+                style={[styles.nameInput, { color: theme.primary, borderBottomColor: theme.primary }]}
                 value={editValue}
                 onChangeText={setEditValue}
                 autoFocus
@@ -204,62 +205,62 @@ export default function ProfileScreen({ navigation }: Props) {
                 disabled={editLoading}
                 style={styles.editActionBtn}
               >
-                <Text style={styles.editActionText}>✓</Text>
+                <Text style={[styles.editActionText, { color: theme.text }]}>✓</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={cancelEdit} style={styles.editActionBtn}>
-                <Text style={styles.editActionText}>✕</Text>
+                <Text style={[styles.editActionText, { color: theme.text }]}>✕</Text>
               </TouchableOpacity>
             </>
           ) : (
             <>
-              <Text style={styles.title}>{username}</Text>
+              <Text style={[styles.title, { color: theme.primary }]}>{username}</Text>
               <TouchableOpacity onPress={startEdit} style={styles.editIconBtn}>
-                <Text style={styles.editIcon}>✎</Text>
+                <Text style={[styles.editIcon, { color: theme.placeholder }]}>✎</Text>
               </TouchableOpacity>
             </>
           )}
         </View>
 
-        {editError ? <Text style={styles.editErrorText}>{editError}</Text> : null}
+        {editError ? <Text style={[styles.editErrorText]}>{editError}</Text> : null}
 
         <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.sessionsPlayed}</Text>
-            <Text style={styles.statLabel}>Sessions Played</Text>
+          <View style={[styles.statCard, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}>
+            <Text style={[styles.statValue, { color: theme.text }]}>{stats.sessionsPlayed}</Text>
+            <Text style={[styles.statLabel, { color: theme.placeholder }]}>Sessions Played</Text>
           </View>
 
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}>
             <Text
               style={[
                 styles.statValue,
-                stats.totalNet >= 0 ? styles.positive : styles.negative,
+                { color: stats.totalNet >= 0 ? '#4CAF50' : '#F44336' },
               ]}
             >
               {formatNet(stats.totalNet)}
             </Text>
-            <Text style={styles.statLabel}>Total Net</Text>
+            <Text style={[styles.statLabel, { color: theme.placeholder }]}>Total Net</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <Text style={[styles.statValue, styles.positive]}>
+          <View style={[styles.statCard, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}>
+            <Text style={[styles.statValue, { color: '#4CAF50' }]}>
               {formatNet(stats.biggestWin)}
             </Text>
-            <Text style={styles.statLabel}>Biggest Win</Text>
+            <Text style={[styles.statLabel, { color: theme.placeholder }]}>Biggest Win</Text>
           </View>
 
-          <View style={styles.statCard}>
-            <Text style={[styles.statValue, styles.negative]}>
+          <View style={[styles.statCard, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}>
+            <Text style={[styles.statValue, { color: '#F44336' }]}>
               {formatNet(stats.biggestLoss)}
             </Text>
-            <Text style={styles.statLabel}>Biggest Loss</Text>
+            <Text style={[styles.statLabel, { color: theme.placeholder }]}>Biggest Loss</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>Notification Preferences</Text>
+        <Text style={[styles.sectionLabel, { color: theme.text }]}>Notification Preferences</Text>
 
-        <View style={styles.preferencesContainer}>
-          <View style={styles.preferenceRow}>
-            <Text style={styles.preferenceLabel}>Friend Requests</Text>
+        <View style={[styles.preferencesContainer, { backgroundColor: theme.surface }]}>
+          <View style={[styles.preferenceRow, { borderBottomColor: theme.border }]}>
+            <Text style={[styles.preferenceLabel, { color: theme.text }]}>Friend Requests</Text>
             <Switch
               value={notificationPrefs.friendRequests}
               onValueChange={() => handlePreferenceToggle('friendRequests')}
@@ -267,22 +268,47 @@ export default function ProfileScreen({ navigation }: Props) {
             />
           </View>
 
-          <View style={styles.preferenceRow}>
-            <Text style={styles.preferenceLabel}>Session Invites</Text>
+          <View style={[styles.preferenceRow, { borderBottomColor: theme.border }]}>
+            <Text style={[styles.preferenceLabel, { color: theme.text }]}>Session Invites</Text>
             <Switch
               value={notificationPrefs.sessionInvites}
               onValueChange={() => handlePreferenceToggle('sessionInvites')}
               disabled={prefsLoading}
             />
           </View>
+
+          <View style={styles.themeToggleSection}>
+            <Text style={[styles.preferenceLabel, { color: theme.text }]}>Theme</Text>
+            <View style={styles.themeToggleGroup}>
+              {(['system', 'light', 'dark'] as const).map((mode) => (
+                <TouchableOpacity
+                  key={mode}
+                  onPress={async () => await setColorScheme(mode)}
+                  style={[
+                    styles.themeToggleBtn,
+                    colorSchemeOverride === mode && styles.themeToggleBtnActive,
+                    { borderColor: theme.border, backgroundColor: colorSchemeOverride === mode ? theme.primary : theme.inputBackground }
+                  ]}
+                >
+                  <Text style={[
+                    styles.themeToggleBtnText,
+                    colorSchemeOverride === mode && styles.themeToggleBtnTextActive,
+                    { color: colorSchemeOverride === mode ? theme.textOnPrimary : theme.text }
+                  ]}>
+                    {mode === 'system' ? '◉ System' : mode === 'light' ? '☀ Light' : '◑ Dark'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         </View>
 
-        <Text style={styles.sectionLabel}>Session History</Text>
+        <Text style={[styles.sectionLabel, { color: theme.text }]}>Session History</Text>
 
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder, color: theme.text }]}
           placeholder="Search sessions..."
-          placeholderTextColor={colors.placeholder}
+          placeholderTextColor={theme.placeholder}
           value={searchText}
           onChangeText={setSearchText}
         />
@@ -292,9 +318,20 @@ export default function ProfileScreen({ navigation }: Props) {
             <TouchableOpacity
               key={f}
               onPress={() => setWinFilter(f)}
-              style={[styles.filterBtn, winFilter === f && styles.filterBtnActive]}
+              style={[
+                styles.filterBtn,
+                {
+                  borderColor: winFilter === f ? theme.primary : theme.inputBorder,
+                  backgroundColor: winFilter === f ? theme.primary : theme.inputBackground,
+                },
+              ]}
             >
-              <Text style={[styles.filterBtnText, winFilter === f && styles.filterBtnTextActive]}>
+              <Text style={[
+                styles.filterBtnText,
+                {
+                  color: winFilter === f ? theme.textOnPrimary : theme.placeholder,
+                },
+              ]}>
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </Text>
             </TouchableOpacity>
@@ -303,11 +340,11 @@ export default function ProfileScreen({ navigation }: Props) {
 
         {sessions.length === 0 ? (
           <View style={styles.centered}>
-            <Text style={styles.emptyText}>No completed sessions yet</Text>
+            <Text style={[styles.emptyText, { color: theme.placeholder }]}>No completed sessions yet</Text>
           </View>
         ) : filteredSessions.length === 0 ? (
           <View style={styles.centered}>
-            <Text style={styles.emptyText}>No sessions match your search</Text>
+            <Text style={[styles.emptyText, { color: theme.placeholder }]}>No sessions match your search</Text>
           </View>
         ) : (
           <FlatList
@@ -316,35 +353,43 @@ export default function ProfileScreen({ navigation }: Props) {
             contentContainerStyle={{ paddingBottom: 20 }}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={styles.sessionRow}
+                style={[styles.sessionRow, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}
                 onPress={() => navigation.navigate('SessionDetail', { sessionCode: item.sessionCode })}
               >
                 <View style={styles.sessionMain}>
-                  <Text style={styles.sessionCode}>{item.sessionCode}</Text>
-                  <Text style={styles.sessionDate}>{formatDate(item.date)}</Text>
+                  <Text style={[styles.sessionCode, { color: theme.text }]}>{item.sessionCode}</Text>
+                  <Text style={[styles.sessionDate, { color: theme.placeholder }]}>{formatDate(item.date)}</Text>
                 </View>
 
                 <View style={styles.sessionRight}>
                   <Text
                     style={[
                       styles.sessionNet,
-                      item.net >= 0 ? styles.positive : styles.negative,
+                      { color: item.net >= 0 ? '#4CAF50' : '#F44336' },
                     ]}
                   >
                     {formatNet(item.net)}
                   </Text>
-                  <Text style={styles.sessionPlayers}>{item.playerCount} players</Text>
+                  <Text style={[styles.sessionPlayers, { color: theme.placeholder }]}>{item.playerCount} players</Text>
                 </View>
               </TouchableOpacity>
             )}
           />
         )}
         <TouchableOpacity
-          style={[styles.exportBtn, sessions.length === 0 && styles.exportBtnDisabled]}
+          style={[
+            styles.exportBtn,
+            sessions.length === 0 && { ...styles.exportBtnDisabled, borderColor: theme.inputBorder, backgroundColor: theme.inputBackground },
+            sessions.length > 0 && { backgroundColor: theme.primary },
+          ]}
           onPress={handleExport}
           disabled={sessions.length === 0 || exporting}
         >
-          <Text style={[styles.exportBtnText, sessions.length === 0 && styles.exportBtnTextDisabled]}>
+          <Text style={[
+            styles.exportBtnText,
+            sessions.length === 0 && { color: theme.placeholder },
+            sessions.length > 0 && { color: theme.textOnPrimary },
+          ]}>
             {sessions.length === 0
               ? 'No sessions to export'
               : exporting
@@ -375,7 +420,6 @@ export default function ProfileScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 
   centered: {
@@ -401,7 +445,6 @@ const styles = StyleSheet.create({
   },
 
   backText: {
-    color: colors.placeholder,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -414,7 +457,6 @@ const styles = StyleSheet.create({
   avatarEditHint: {
     marginTop: 6,
     fontSize: 12,
-    color: colors.placeholder,
   },
 
   titleRow: {
@@ -426,7 +468,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: colors.primary,
     letterSpacing: 1,
     flex: 1,
   },
@@ -438,16 +479,13 @@ const styles = StyleSheet.create({
 
   editIcon: {
     fontSize: 22,
-    color: colors.placeholder,
   },
 
   nameInput: {
     flex: 1,
     fontSize: 28,
     fontWeight: '800',
-    color: colors.primary,
     borderBottomWidth: 1,
-    borderBottomColor: colors.primary,
     paddingVertical: 2,
     letterSpacing: 1,
   },
@@ -459,7 +497,6 @@ const styles = StyleSheet.create({
 
   editActionText: {
     fontSize: 22,
-    color: colors.text,
   },
 
   editErrorText: {
@@ -479,10 +516,8 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: colors.inputBackground,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
     padding: 12,
     alignItems: 'center',
   },
@@ -490,13 +525,11 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: 4,
   },
 
   statLabel: {
     fontSize: 11,
-    color: colors.placeholder,
     textAlign: 'center',
   },
 
@@ -511,22 +544,18 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.text,
     marginBottom: 12,
     letterSpacing: 0.5,
   },
 
   emptyText: {
-    color: colors.placeholder,
     fontSize: 15,
     textAlign: 'center',
   },
 
   sessionRow: {
-    backgroundColor: colors.inputBackground,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
     padding: 12,
     marginBottom: 10,
     flexDirection: 'row',
@@ -539,14 +568,12 @@ const styles = StyleSheet.create({
   },
 
   sessionCode: {
-    color: colors.text,
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 2,
   },
 
   sessionDate: {
-    color: colors.placeholder,
     fontSize: 12,
   },
 
@@ -561,16 +588,12 @@ const styles = StyleSheet.create({
   },
 
   sessionPlayers: {
-    color: colors.placeholder,
     fontSize: 12,
   },
 
   searchInput: {
-    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
     borderRadius: 8,
-    color: colors.text,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
@@ -588,23 +611,19 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
-    backgroundColor: colors.inputBackground,
   },
 
   filterBtnActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
+    borderWidth: 1,
   },
 
   filterBtnText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.placeholder,
   },
 
   filterBtnTextActive: {
-    color: '#000',
+    fontWeight: '700',
   },
 
   exportBtn: {
@@ -612,24 +631,20 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingVertical: 14,
     borderRadius: 8,
-    backgroundColor: colors.primary,
     alignItems: 'center',
   },
 
   exportBtnDisabled: {
-    backgroundColor: colors.inputBackground,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
   },
 
   exportBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#000',
   },
 
   exportBtnTextDisabled: {
-    color: colors.placeholder,
+    fontWeight: '700',
   },
 
   ratingDisplayRow: {
@@ -646,13 +661,11 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 13,
-    color: colors.placeholder,
   },
 
   preferencesContainer: {
     marginBottom: 24,
     borderRadius: 8,
-    backgroundColor: colors.cardBackground || 'rgba(255, 255, 255, 0.05)',
     padding: 16,
   },
 
@@ -662,12 +675,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
 
   preferenceLabel: {
-    color: colors.text || '#FFFFFF',
     fontSize: 16,
     fontWeight: '500',
+  },
+
+  themeToggleSection: {
+    paddingTop: 12,
+    paddingBottom: 0,
+  },
+
+  themeToggleGroup: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+
+  themeToggleBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  themeToggleBtnActive: {
+    borderWidth: 1,
+  },
+
+  themeToggleBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  themeToggleBtnTextActive: {
+    fontWeight: '700',
   },
 });

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
 
 type Props = {
   message?: string;
@@ -10,14 +11,16 @@ export default function ErrorMessage({
   message = 'Something went wrong.',
   onRetry,
 }: Props) {
+  const { theme } = useTheme();
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Oops</Text>
-      <Text style={styles.message}>{message}</Text>
+    <View style={[styles.container, { borderColor: theme.border, backgroundColor: theme.surface }]}>
+      <Text style={[styles.title, { color: theme.text }]}>Oops</Text>
+      <Text style={[styles.message, { color: theme.textSecondary }]}>{message}</Text>
 
       {onRetry ? (
-        <Pressable style={styles.button} onPress={onRetry}>
-          <Text style={styles.buttonText}>Retry</Text>
+        <Pressable style={[styles.button, { borderColor: theme.primary }]} onPress={onRetry}>
+          <Text style={[styles.buttonText, { color: theme.primary }]}>Retry</Text>
         </Pressable>
       ) : null}
     </View>

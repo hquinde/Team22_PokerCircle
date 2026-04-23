@@ -1,15 +1,18 @@
 import React from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
 
 type Props = {
   message?: string;
 };
 
 export default function LoadingSpinner({ message = 'Loading...' }: Props) {
+  const { theme } = useTheme();
+
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" />
-      <Text style={styles.text}>{message}</Text>
+      <ActivityIndicator size="large" color={theme.text} />
+      <Text style={[styles.text, { color: theme.text }]}>{message}</Text>
     </View>
   );
 }

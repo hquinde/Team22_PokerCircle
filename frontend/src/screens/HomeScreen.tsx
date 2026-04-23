@@ -39,8 +39,53 @@ type Props = CompositeScreenProps<
   StackScreenProps<RootStackParamList>
 >;
 
+function getThemeStyles(theme: any) {
+  return {
+    rejoinBanner: {
+      width: '100%' as const,
+      maxWidth: 320,
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'space-between' as const,
+      backgroundColor: theme.surface,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: theme.accent,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      marginBottom: 20,
+    },
+    rejoinPulseDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: theme.accent,
+    },
+    rejoinBannerLabel: {
+      fontSize: 9,
+      fontWeight: '800' as const,
+      color: theme.accent,
+      letterSpacing: 1.5,
+      textTransform: 'uppercase' as const,
+      marginBottom: 2,
+    },
+    rejoinBannerCode: {
+      fontSize: 18,
+      fontWeight: '800' as const,
+      color: theme.text,
+      letterSpacing: 4,
+    },
+    rejoinBannerCta: {
+      fontSize: 14,
+      fontWeight: '700' as const,
+      color: theme.accent,
+    },
+  };
+}
+
 export default function HomeScreen({ navigation }: Props) {
   const { theme, colorScheme } = useTheme();
+  const themeStyles = getThemeStyles(theme);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [invites, setInvites] = useState<SessionInvite[]>([]);
@@ -341,19 +386,19 @@ export default function HomeScreen({ navigation }: Props) {
       {activeSession?.sessionCode != null && (
         <Pressable
           style={({ pressed }) => [
-            styles.rejoinBanner(theme),
+            themeStyles.rejoinBanner,
             pressed && styles.rejoinBannerPressed,
           ]}
           onPress={handleRejoinSession}
         >
           <View style={styles.rejoinBannerLeft}>
-            <View style={styles.rejoinPulseDot(theme)} />
+            <View style={themeStyles.rejoinPulseDot} />
             <View>
-              <Text style={styles.rejoinBannerLabel(theme)}>SESSION IN PROGRESS</Text>
-              <Text style={styles.rejoinBannerCode(theme)}>{activeSession.sessionCode}</Text>
+              <Text style={themeStyles.rejoinBannerLabel}>SESSION IN PROGRESS</Text>
+              <Text style={themeStyles.rejoinBannerCode}>{activeSession.sessionCode}</Text>
             </View>
           </View>
-          <Text style={styles.rejoinBannerCta(theme)}>Rejoin →</Text>
+          <Text style={themeStyles.rejoinBannerCta}>Rejoin →</Text>
         </Pressable>
       )}
 
@@ -804,20 +849,6 @@ privacyOptionTextActive: {
   },
 
   // ── TM22-146: Rejoin banner ─────────────────────────────────────────────
-  rejoinBanner: (theme: any) => ({
-    width: '100%',
-    maxWidth: 320,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: theme.surface,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: theme.accent,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginBottom: 20,
-  }),
   rejoinBannerPressed: {
     opacity: 0.8,
   },
@@ -826,31 +857,6 @@ privacyOptionTextActive: {
     alignItems: 'center',
     gap: 12,
   },
-  rejoinPulseDot: (theme: any) => ({
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: theme.accent,
-  }),
-  rejoinBannerLabel: (theme: any) => ({
-    fontSize: 9,
-    fontWeight: '800',
-    color: theme.accent,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  }),
-  rejoinBannerCode: (theme: any) => ({
-    fontSize: 18,
-    fontWeight: '800',
-    color: theme.text,
-    letterSpacing: 4,
-  }),
-  rejoinBannerCta: (theme: any) => ({
-    fontSize: 14,
-    fontWeight: '700',
-    color: theme.accent,
-  }),
 
   inviteSection: {
     width: '100%',

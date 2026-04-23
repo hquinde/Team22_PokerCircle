@@ -7,6 +7,7 @@ import {
   Pressable,
   SafeAreaView,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -16,6 +17,7 @@ import type { RootStackParamList } from '../../App';
 import { getSessionResults, submitRating } from '../api/api';
 import type { PlayerResult, SettlementTransaction } from '../api/api';
 import { colors } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { BACKEND_URL } from '../config/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
@@ -39,10 +41,12 @@ function StarSelector({
   value,
   onChange,
   disabled,
+  themeColor,
 }: {
   value: number | null;
   onChange: (stars: number) => void;
   disabled: boolean;
+  themeColor: string;
 }) {
   return (
     <View style={starStyles.row}>
@@ -62,7 +66,7 @@ function StarSelector({
               starStyles.starText,
               value !== null && n <= value
                 ? starStyles.starFilled
-                : starStyles.starEmpty,
+                : { color: themeColor },
             ]}
           >
             ★
@@ -90,9 +94,6 @@ const starStyles = StyleSheet.create({
   starFilled: {
     color: '#FFC107',
   },
-  starEmpty: {
-    color: '#444444',
-  },
 });
 
 // ---------------------------------------------------------------------------
@@ -101,6 +102,7 @@ const starStyles = StyleSheet.create({
 
 export default function ResultsScreen({ route, navigation }: Props) {
   const { sessionCode } = route.params;
+  const { theme, colorScheme } = useTheme();
 
   const [playerResults, setPlayerResults] = useState<PlayerResult[]>([]);
   const [transactions, setTransactions] = useState<SettlementTransaction[]>([]);
@@ -332,6 +334,8 @@ export default function ResultsScreen({ route, navigation }: Props) {
 
   // ── Render ───────────────────────────────────────────────────────────────
 
+  const styles = getStyles(theme);
+
   if (loading) {
     return <LoadingSpinner message="Calculating results..." />;
   }
@@ -351,6 +355,7 @@ export default function ResultsScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -457,6 +462,7 @@ export default function ResultsScreen({ route, navigation }: Props) {
                   value={ratings[player.userId] ?? null}
                   onChange={(stars) => handleSetRating(player.userId, stars)}
                   disabled={ratingsSubmitting}
+                  themeColor={theme.border}
                 />
               </View>
             ))}
@@ -520,10 +526,10 @@ export default function ResultsScreen({ route, navigation }: Props) {
 // Styles
 // ---------------------------------------------------------------------------
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: theme.background,
   },
 
   scroll: {
@@ -546,13 +552,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 36,
     fontWeight: '800',
-    color: colors.primaryDark,
+    color: theme.primaryDark,
     letterSpacing: 1,
   },
 
   code: {
     fontSize: 13,
-    color: colors.placeholder,
+    color: theme.placeholder,
     letterSpacing: 4,
     marginTop: 2,
   },
@@ -560,7 +566,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: colors.placeholder,
+    color: theme.placeholder,
     letterSpacing: 2,
     textTransform: 'uppercase',
     marginBottom: 10,
@@ -569,7 +575,7 @@ const styles = StyleSheet.create({
   sectionLabelWithSpacing: {
     fontSize: 11,
     fontWeight: '700',
-    color: colors.placeholder,
+    color: theme.placeholder,
     letterSpacing: 2,
     textTransform: 'uppercase',
     marginTop: 28,
@@ -580,13 +586,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.inputBackground,
+    backgroundColor: theme.inputBackground,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
+    borderColor: theme.inputBorder,
     gap: 12,
   },
 
@@ -600,12 +606,12 @@ const styles = StyleSheet.create({
   medal: {
     fontSize: 16,
     fontWeight: '700',
-    color: colors.placeholder,
+    color: theme.placeholder,
     marginRight: 10,
   },
 
   playerName: {
-    color: colors.text,
+    color: theme.text,
     fontSize: 16,
     fontWeight: '600',
     flexShrink: 1,
@@ -614,7 +620,7 @@ const styles = StyleSheet.create({
   netAmount: {
     fontSize: 18,
     fontWeight: '800',
-    color: colors.text,
+    color: theme.text,
   },
 
   positive: {
@@ -622,32 +628,32 @@ const styles = StyleSheet.create({
   },
 
   negative: {
-    color: colors.primary,
+    color: theme.primary,
   },
 
   evenBox: {
-    backgroundColor: colors.inputBackground,
+    backgroundColor: theme.inputBackground,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
+    borderColor: theme.inputBorder,
     alignItems: 'center',
   },
 
   evenText: {
-    color: colors.text,
+    color: theme.text,
     fontSize: 15,
     textAlign: 'center',
   },
 
   transactionCard: {
-    backgroundColor: colors.inputBackground,
+    backgroundColor: theme.inputBackground,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
+    borderColor: theme.inputBorder,
   },
 
   transactionHeader: {
@@ -661,19 +667,19 @@ const styles = StyleSheet.create({
   transactionLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.placeholder,
+    color: theme.placeholder,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
 
   transactionText: {
-    color: colors.text,
+    color: theme.text,
     fontSize: 16,
     lineHeight: 22,
   },
 
   fromName: {
-    color: colors.primary,
+    color: theme.primary,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -685,7 +691,7 @@ const styles = StyleSheet.create({
   },
 
   transactionAmount: {
-    color: colors.text,
+    color: theme.text,
     fontSize: 17,
     fontWeight: '800',
   },
@@ -726,24 +732,24 @@ const styles = StyleSheet.create({
 
   ratingsCard: {
     marginTop: 28,
-    backgroundColor: colors.inputBackground,
+    backgroundColor: theme.inputBackground,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: colors.inputBorder,
+    borderColor: theme.inputBorder,
   },
 
   ratingsTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: colors.text,
+    color: theme.text,
     marginBottom: 4,
     letterSpacing: 0.5,
   },
 
   ratingsSubtitle: {
     fontSize: 12,
-    color: colors.placeholder,
+    color: theme.placeholder,
     marginBottom: 18,
   },
 
@@ -753,11 +759,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#2A2A2A',
+    borderBottomColor: theme.border,
   },
 
   ratingName: {
-    color: colors.text,
+    color: theme.text,
     fontSize: 15,
     fontWeight: '600',
     flex: 1,
@@ -772,7 +778,7 @@ const styles = StyleSheet.create({
   },
 
   submitRatingsButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
@@ -780,7 +786,7 @@ const styles = StyleSheet.create({
   },
 
   submitRatingsText: {
-    color: colors.textOnPrimary,
+    color: theme.textOnPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -792,7 +798,7 @@ const styles = StyleSheet.create({
   },
 
   skipRatingsText: {
-    color: colors.placeholder,
+    color: theme.placeholder,
     fontSize: 14,
   },
 
@@ -819,7 +825,7 @@ const styles = StyleSheet.create({
   // ── Done button ────────────────────────────────────────────────────────
 
   doneButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: theme.primary,
     borderRadius: 12,
     paddingVertical: 18,
     alignItems: 'center',
@@ -833,7 +839,7 @@ const styles = StyleSheet.create({
   },
 
   doneButtonText: {
-    color: colors.textOnPrimary,
+    color: theme.textOnPrimary,
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: 0.5,

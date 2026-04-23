@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View, ViewStyle, StyleProp } from 'react-native';
 import { PRESET_MAP } from '../constants/avatarPresets';
+import { useTheme } from '../theme/ThemeContext';
 
 type Props = {
   avatarId?: string | null;
@@ -8,8 +9,9 @@ type Props = {
 };
 
 export default function AvatarDisplay({ avatarId, size = 44, style }: Props) {
+  const { theme } = useTheme();
   const preset = avatarId ? PRESET_MAP.get(avatarId) : undefined;
-  const bgColor = preset?.color ?? '#444444';
+  const bgColor = preset?.color ?? theme.border;
   const icon = preset?.icon ?? '?';
 
   return (
